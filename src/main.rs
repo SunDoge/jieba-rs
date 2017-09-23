@@ -4,8 +4,8 @@ use std::collections::HashMap;
 
 fn main() {
     // let mut p = HashMap::new();
-    // p.insert('\u{4e00}', vec![('B', "'nr'")]);
-    // p.insert('\u{4e01}', vec![('B', "'nr'"), ('B', "nr")]);
+    // p.insert('\u{4E00}', vec![('B', "'nr'")]);
+    // p.insert('\u{4E01}', vec![('B', "'nr'"), ('B', "nr")]);
     // print!("{:?}", p);
     // jiebars::posseg::char_state_tap::P(&mut p)
     // let p = jiebars::posseg::char_state_tap::p();
@@ -19,10 +19,11 @@ fn main() {
     // let mut path = env::current_dir().unwrap();
     // path.push("src");
     // path.push("dict.txt");
-    let path = "dick";
+    // let path = "dick";
     // let path = jiebars::get_abs_path(path);
-    println!("{}", jiebars::get_abs_path(path));
-    
-   
-    
+    // println!("{}", jiebars::get_abs_path(path));
+    let tk = jiebars::Tokenizer::new(None);
+    let sentence = "我来到北京清华大学";
+    println!("{:?}", tk.cut(&sentence, true, true));
+
 }
