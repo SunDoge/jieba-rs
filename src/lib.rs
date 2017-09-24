@@ -8,6 +8,9 @@ use std::fs::File;
 use regex::Regex;
 use std::collections::HashMap as Map;
 use std::env;
+// use std::io;
+use std::error::Error;
+use std::io::prelude::*;
 // use std::path;
 
 
@@ -51,13 +54,31 @@ impl Tokenizer {
         }
     }
 
-    pub fn gen_pfdict(&self, f: &File) {}
-
-    pub fn get_dict_file(&mut self) -> File {
-        match self.dictionary {
-            Some(ref dict) => File::open(dict).unwrap(),
-            None => File::open(get_abs_path(DEFAULT_DICT_NAME)).unwrap(),
+    pub fn gen_pfdict(&self, f: String) {
+        // let lfreq = Map::new();
+        let ltotal = 0;
+        // let f_name = 
+        // let mut contents = String::new();
+        // f.read_to_string(&mut contents);
+        for line in f.lines() {
+            let line = line.trim_matches(char::is_whitespace);
+            
         }
+    }
+
+    pub fn get_dict_file(&mut self) -> Result<String, Box<Error>>{
+        // match self.dictionary {
+        //     Some(ref dict) => File::open(dict)?,
+        //     None => File::open(get_abs_path(DEFAULT_DICT_NAME))?,
+        // }
+        let mut f = if let Some(ref dict) = self.dictionary {
+            File::open(dict)?
+        } else {
+            File::open(get_abs_path(DEFAULT_DICT_NAME))?
+        };
+        let mut contents = String::new();
+        f.read_to_string(&mut contents)?;
+        Ok(contents)
     }
 
     pub fn initialize(&mut self, dictionary: Option<&str>) {
@@ -159,6 +180,7 @@ impl Tokenizer {
         // println!("{:?}", cap);
 
     }
+
 }
 
 
