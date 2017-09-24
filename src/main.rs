@@ -22,8 +22,9 @@ fn main() {
     // let path = "dick";
     // let path = jiebars::get_abs_path(path);
     // println!("{}", jiebars::get_abs_path(path));
-    let tk = jiebars::Tokenizer::new(None);
+    let mut tk = jiebars::Tokenizer::new(None);
     let sentence = "我来到北京清华大学";
-    println!("{:?}", tk.cut(&sentence, true, true));
+    // println!("{:?}", tk.cut(&sentence, true, true));
+    println!("{:?}", tk.get_dag(&sentence));
 
 }

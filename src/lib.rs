@@ -26,7 +26,7 @@ pub struct Tokenizer {
     total: i32,
     initialized: bool,
     dictionary: Option<String>,
-    freq: Map<String, usize>,
+    freq: Map<String, u32>,
 }
 
 impl Tokenizer {
@@ -69,9 +69,9 @@ impl Tokenizer {
                 self.dictionary = Some(_abs_path.clone());
                 self.initialized = true;
             }
-            _abs_path
+            Some(_abs_path)
         } else {
-            self.dictionary.clone().unwrap()
+            self.dictionary.clone()
         };
 
         println!("{:?}", &abs_path);
@@ -83,24 +83,40 @@ impl Tokenizer {
         }
     }
 
-    pub fn calc(&self,
-                sentence: &str,
-                DAG: Map<usize, Vec<usize>>,
-                route: &mut Map<usize, (usize, usize)>) {
+    pub fn calc(
+        &self,
+        sentence: &str,
+        dag: Map<usize, Vec<usize>>,
+        route: &mut Map<usize, (usize, usize)>,
+    ) {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
 
     }
 
-    pub fn get_dag(&mut self, sentence: &str) {
+    pub fn get_dag(&mut self, sentence: &str) -> Map<usize, Vec<usize>> {
         self.check_initialized();
-        // let mut DAG = Map::new();
+        let mut dag = Map::new();
         let n = sentence.chars().count();
-        for k in 0..n {
-            // let mut tmplist = Vec::new();
+        for k in 0..n - 1 {
+            let mut tmplist = Vec::new();
             let mut i = k;
-
+            let mut frag = sentence.chars().nth(k).unwrap().to_string();
+            while i < n && self.freq.contains_key(&frag) {
+                if self.freq[&frag] > 0 {
+                    tmplist.push(i);
+                }
+                i += 1;
+                frag = sentence[sentence.char_indices().nth(k).unwrap().0..
+                                    sentence.char_indices().nth(i + 1).unwrap().0]
+                    .to_string();
+            }
+            if tmplist.is_empty() {
+                tmplist.push(k);
+            }
+            dag.insert(k, tmplist);
         }
+        dag
     }
 
     fn cut_all(&self, sentence: &str) {}
@@ -120,11 +136,15 @@ impl Tokenizer {
         // sentence = strdecode(&sentence);
 
         let (re_han, re_skip) = if cut_all {
-            (Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
-             Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap())
+            (
+                Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
+                Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap(),
+            )
         } else {
-            (Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
-             Regex::new(r"(\r\n|\s)").unwrap())
+            (
+                Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
+                Regex::new(r"(\r\n|\s)").unwrap(),
+            )
         };
 
         let cut_block = if cut_all {
@@ -136,7 +156,7 @@ impl Tokenizer {
         };
 
         let cap = re_han.captures(&sentence);
-        println!("{:?}", cap);
+        // println!("{:?}", cap);
 
     }
 }
