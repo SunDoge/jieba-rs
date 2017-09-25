@@ -69,12 +69,14 @@ impl Tokenizer {
             // println!("{} : {}", word, freq);
             lfreq.insert(word, freq);
             ltotal += freq;
+
             for ch in word.char_indices() {
-                let mut wfrag = word[..ch.0 + ch.1.len_utf8()].to_string();
-                println!("wfrag = {}", &wfrag);
-                // if !lfreq.contains_key(&wfrag) {
-                // lfreq.insert(&wfrag, 0);
-                // }
+                // let mut word = word;
+                let wfrag = &word[..ch.0 + ch.1.len_utf8()];
+                // println!("wfrag = {}", &wfrag);
+                if !lfreq.contains_key(&wfrag) {
+                    lfreq.insert(&wfrag, 0);
+                }
 
             }
         }

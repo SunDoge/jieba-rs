@@ -28,5 +28,5 @@ fn main() {
     println!("{:?}", tk.get_dag(&sentence));
     let contents = tk.get_dict_file().unwrap();
     let (freq, total) = tk.gen_pfdict(&contents);
-    // println!("{:?}: {}", freq, total);
+    println!("{:?}: {}", freq, total);
 }
