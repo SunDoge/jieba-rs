@@ -1,4 +1,5 @@
 extern crate regex;
+extern crate num_cpus;
 
 pub mod analyse;
 pub mod posseg;
@@ -11,6 +12,7 @@ use std::env;
 // use std::io;
 use std::error::Error;
 use std::io::prelude::*;
+use std::sync::{Arc, Mutex};
 // use std::path;
 
 
@@ -61,6 +63,7 @@ impl Tokenizer {
         // let mut contents = String::new();
         // f.read_to_string(&mut contents);
         for line in f.lines() {
+            // TODO: error handle
             let line = line.trim();
             // println!("line: {}", line);
             let v: Vec<&'a str> = line.split(' ').collect();
@@ -166,9 +169,9 @@ impl Tokenizer {
     /// Chinese characters into seperated words.
     ///
     /// Parameter:
-    ///     - sentence: The str(unicode) to be segmented.
-    ///     - cut_all: Model type. True for full pattern, False for accurate pattern.
-    ///     - HMM: Whether to use the Hidden Markov Model.
+    /// - sentence: The str(unicode) to be segmented.
+    /// - cut_all: Model type. True for full pattern, False for accurate pattern.
+    /// - HMM: Whether to use the Hidden Markov Model.
     pub fn cut(&self, sentence: &str, cut_all: bool, hmm: bool) {
         // sentence = strdecode(&sentence);
 
@@ -194,7 +197,16 @@ impl Tokenizer {
     }
 }
 
+pub fn enable_parallel(processnum: usize) {
+    let processnum = if processnum == 0 {
+        num_cpus::get()
+    } else {
+        processnum
+    };
+    println!("cpus: {}", processnum);
+}
 
+pub fn disable_parallel() {}
 
 
 

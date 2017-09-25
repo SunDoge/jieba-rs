@@ -7,3 +7,4 @@ authors = ["SunDoge <384813529@qq.com>"]
 regex = "0.2"
 log = "0.3"
 env_logger = "0.3"
+num_cpus = "1.0"

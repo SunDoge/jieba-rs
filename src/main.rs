@@ -24,9 +24,10 @@ fn main() {
     // println!("{}", jiebars::get_abs_path(path));
     let mut tk = jiebars::Tokenizer::new(None);
     let sentence = "我来到北京清华大学";
-    // println!("{:?}", tk.cut(&sentence, true, true));
+    println!("{:?}", tk.cut(&sentence, true, true));
     println!("{:?}", tk.get_dag(&sentence));
     let contents = tk.get_dict_file().unwrap();
     let (freq, total) = tk.gen_pfdict(&contents);
     println!("{:?}: {}", freq, total);
+    jiebars::enable_parallel(0);
 }
