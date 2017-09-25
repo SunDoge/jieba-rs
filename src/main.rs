@@ -26,5 +26,7 @@ fn main() {
     let sentence = "我来到北京清华大学";
     // println!("{:?}", tk.cut(&sentence, true, true));
     println!("{:?}", tk.get_dag(&sentence));
-
+    let contents = tk.get_dict_file().unwrap();
+    let (freq, total) = tk.gen_pfdict(&contents);
+    // println!("{:?}: {}", freq, total);
 }

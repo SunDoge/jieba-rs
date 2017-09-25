@@ -54,19 +54,34 @@ impl Tokenizer {
         }
     }
 
-    pub fn gen_pfdict(&self, f: String) {
-        // let lfreq = Map::new();
-        let ltotal = 0;
-        // let f_name = 
+    pub fn gen_pfdict<'a>(&self, f: &'a str) -> (Map<&'a str, u32>, u32) {
+        let mut lfreq = Map::new();
+        let mut ltotal = 0;
+        // let f_name =
         // let mut contents = String::new();
         // f.read_to_string(&mut contents);
         for line in f.lines() {
-            let line = line.trim_matches(char::is_whitespace);
-            
+            let line = line.trim();
+            // println!("line: {}", line);
+            let v: Vec<&'a str> = line.split(' ').collect();
+            let word = v[0];
+            let freq: u32 = v[1].parse().unwrap();
+            // println!("{} : {}", word, freq);
+            lfreq.insert(word, freq);
+            ltotal += freq;
+            for ch in word.char_indices() {
+                let mut wfrag = word[..ch.0 + ch.1.len_utf8()].to_string();
+                println!("wfrag = {}", &wfrag);
+                // if !lfreq.contains_key(&wfrag) {
+                // lfreq.insert(&wfrag, 0);
+                // }
+
+            }
         }
+        (lfreq, ltotal)
     }
 
-    pub fn get_dict_file(&mut self) -> Result<String, Box<Error>>{
+    pub fn get_dict_file(&mut self) -> Result<String, Box<Error>> {
         // match self.dictionary {
         //     Some(ref dict) => File::open(dict)?,
         //     None => File::open(get_abs_path(DEFAULT_DICT_NAME))?,
@@ -104,12 +119,10 @@ impl Tokenizer {
         }
     }
 
-    pub fn calc(
-        &self,
-        sentence: &str,
-        dag: Map<usize, Vec<usize>>,
-        route: &mut Map<usize, (usize, usize)>,
-    ) {
+    pub fn calc(&self,
+                sentence: &str,
+                dag: Map<usize, Vec<usize>>,
+                route: &mut Map<usize, (usize, usize)>) {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
 
@@ -129,7 +142,8 @@ impl Tokenizer {
                 }
                 i += 1;
                 frag = sentence[sentence.char_indices().nth(k).unwrap().0..
-                                    sentence.char_indices().nth(i + 1).unwrap().0]
+                       sentence.char_indices().nth(i + 1).unwrap().0 +
+                       sentence.char_indices().nth(i + 1).unwrap().1.len_utf8()]
                     .to_string();
             }
             if tmplist.is_empty() {
@@ -157,15 +171,11 @@ impl Tokenizer {
         // sentence = strdecode(&sentence);
 
         let (re_han, re_skip) = if cut_all {
-            (
-                Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
-                Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap(),
-            )
+            (Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
+             Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap())
         } else {
-            (
-                Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
-                Regex::new(r"(\r\n|\s)").unwrap(),
-            )
+            (Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
+             Regex::new(r"(\r\n|\s)").unwrap())
         };
 
         let cut_block = if cut_all {
@@ -180,7 +190,6 @@ impl Tokenizer {
         // println!("{:?}", cap);
 
     }
-
 }
 
 
