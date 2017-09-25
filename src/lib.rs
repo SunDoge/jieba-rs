@@ -130,6 +130,10 @@ impl Tokenizer {
                 route: &mut Map<usize, (usize, usize)>) {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
+        // let logtotal =
+        // for idx in (-1..n - 1).rev() {
+            // route.insert(idx, )
+        // }
 
     }
 
