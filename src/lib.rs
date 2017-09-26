@@ -171,9 +171,9 @@ impl Tokenizer {
         }
     }
 
-    fn cut_dag(&self, sentence: &str) {}
+    fn cut_dag(&mut self, sentence: &str) {}
 
-    fn cut_dag_no_hmm(&self, sentence: &str) {}
+    fn cut_dag_no_hmm(&mut self, sentence: &str) {}
 
     /// The main function that segments an entire sentence that contains
     /// Chinese characters into seperated words.
@@ -193,17 +193,18 @@ impl Tokenizer {
              Regex::new(r"(\r\n|\s)").unwrap())
         };
 
-        // let cut_block = if cut_all {
-        //     |s| self.cut_all(s)
-        //     // } else if hmm {
-        //     // |s| self.cut_dag(s)
-        // } else {
-        //     |s| self.cut_dag_no_hmm(s)
-        // };
-        // let cut_block = self.cut_all();
+        let cut_block = if cut_all {
+            Self::cut_all
+        } else if hmm {
+            Self::cut_dag
+        } else {
+            Self::cut_dag_no_hmm
+        };
+        // let cut_block = Self::cut_all;
 
         for blk in re_han.captures_iter(&sentence) {
             println!("{:?}", &blk[1]);
+            cut_block(self, &blk[1]);
         }
 
     }
