@@ -28,7 +28,7 @@ pub fn get_abs_path(path: &str) -> String {
 
 pub struct Tokenizer {
     // dictionary:
-    total: i32,
+    total: u32,
     initialized: bool,
     dictionary: Option<String>,
     freq: Map<String, u32>,
@@ -130,10 +130,10 @@ impl Tokenizer {
                 route: &mut Map<usize, (usize, usize)>) {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
-        let logtotal = (self.total as f64).log2();
-        // for idx in (-1..n - 1).rev() {
-        // route.insert(idx, )
-        // }
+        let logtotal = (self.total as f64).log2() as u32;
+        for idx in (0..n).rev() {
+            // route.insert(idx)
+        }
 
     }
 
@@ -163,7 +163,13 @@ impl Tokenizer {
         dag
     }
 
-    fn cut_all(&self, sentence: &str) {}
+    fn cut_all(&mut self, sentence: &str) {
+        let dag = self.get_dag(&sentence);
+        let old_j = -1;
+        for (k, l) in dag {
+            println!("{:?}", l);
+        }
+    }
 
     fn cut_dag(&self, sentence: &str) {}
 
@@ -176,7 +182,7 @@ impl Tokenizer {
     /// - sentence: The str(unicode) to be segmented.
     /// - cut_all: Model type. True for full pattern, False for accurate pattern.
     /// - HMM: Whether to use the Hidden Markov Model.
-    pub fn cut(&self, sentence: &str, cut_all: bool, hmm: bool) {
+    pub fn cut(&mut self, sentence: &str, cut_all: bool, hmm: bool) {
         // sentence = strdecode(&sentence);
 
         let (re_han, re_skip) = if cut_all {
@@ -187,16 +193,18 @@ impl Tokenizer {
              Regex::new(r"(\r\n|\s)").unwrap())
         };
 
-        let cut_block = if cut_all {
+        // let cut_block = if cut_all {
+        //     |s| self.cut_all(s)
+        //     // } else if hmm {
+        //     // |s| self.cut_dag(s)
+        // } else {
+        //     |s| self.cut_dag_no_hmm(s)
+        // };
+        // let cut_block = self.cut_all();
 
-        } else if hmm {
-
-        } else {
-
-        };
-
-        let cap = re_han.captures(&sentence);
-        // println!("{:?}", cap);
+        for blk in re_han.captures_iter(&sentence) {
+            println!("{:?}", &blk[1]);
+        }
 
     }
 }
