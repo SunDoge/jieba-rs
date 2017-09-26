@@ -56,7 +56,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn gen_pfdict<'a>(&self, f: &'a str) -> (Map<&'a str, u32>, u32) {
+    pub fn gen_pfdict<'a>(&self, f: &'a str) -> (Map<String, u32>, u32) {
         let mut lfreq = Map::new();
         let mut ltotal = 0;
         // let f_name =
@@ -70,15 +70,15 @@ impl Tokenizer {
             let word = v[0];
             let freq: u32 = v[1].parse().unwrap();
             // println!("{} : {}", word, freq);
-            lfreq.insert(word, freq);
+            lfreq.insert(word.to_string(), freq);
             ltotal += freq;
 
             for ch in word.char_indices() {
                 // let mut word = word;
-                let wfrag = &word[..ch.0 + ch.1.len_utf8()];
+                let wfrag = word[..ch.0 + ch.1.len_utf8()].to_string();
                 // println!("wfrag = {}", &wfrag);
                 if !lfreq.contains_key(&wfrag) {
-                    lfreq.insert(&wfrag, 0);
+                    lfreq.insert(wfrag, 0);
                 }
 
             }
