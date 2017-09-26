@@ -62,7 +62,7 @@ impl Tokenizer {
         // let f_name =
         // let mut contents = String::new();
         // f.read_to_string(&mut contents);
-        for line in f.lines() {
+        for (lineno, line) in f.lines().enumerate() {
             // TODO: error handle
             let line = line.trim();
             // println!("line: {}", line);
@@ -130,9 +130,9 @@ impl Tokenizer {
                 route: &mut Map<usize, (usize, usize)>) {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
-        // let logtotal =
+        let logtotal = (self.total as f64).log2();
         // for idx in (-1..n - 1).rev() {
-            // route.insert(idx, )
+        // route.insert(idx, )
         // }
 
     }
