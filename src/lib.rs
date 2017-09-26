@@ -115,7 +115,9 @@ impl Tokenizer {
             self.dictionary.clone()
         };
 
-        println!("{:?}", &abs_path);
+        println!("abs_path = {:?}", &abs_path);
+        let contents = self.get_dict_file().unwrap();
+        let (freq, total) = self.gen_pfdict(&contents);
     }
 
     pub fn check_initialized(&mut self) {
@@ -126,13 +128,16 @@ impl Tokenizer {
 
     pub fn calc(&self,
                 sentence: &str,
-                dag: Map<usize, Vec<usize>>,
+                dag: &Map<usize, Vec<usize>>,
                 route: &mut Map<usize, (usize, usize)>) {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
         let logtotal = (self.total as f64).log2() as u32;
         for idx in (0..n).rev() {
             // route.insert(idx)
+            // for (i, x) in dag[&idx].iter().enumerate() {
+            // println!("{}-{}", i, x);
+            // }
         }
 
     }
@@ -171,7 +176,11 @@ impl Tokenizer {
         }
     }
 
-    fn cut_dag(&mut self, sentence: &str) {}
+    fn cut_dag(&mut self, sentence: &str) {
+        let dag = self.get_dag(&sentence);
+        let mut route: Map<usize, (usize, usize)> = Map::new();
+        self.calc(&sentence, &dag, &mut route);
+    }
 
     fn cut_dag_no_hmm(&mut self, sentence: &str) {}
 
@@ -203,7 +212,7 @@ impl Tokenizer {
         // let cut_block = Self::cut_all;
 
         for blk in re_han.captures_iter(&sentence) {
-            println!("{:?}", &blk[1]);
+            println!("blk = {:?}", &blk[1]);
             cut_block(self, &blk[1]);
         }
 
