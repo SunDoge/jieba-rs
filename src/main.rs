@@ -31,7 +31,7 @@ fn main() {
     // println!("{:?}: {}", freq, total);
     // jiebars::enable_parallel(0);
     let n = 5;
-    for i in (-1..n - 1).rev() {
+    for i in (0..n).rev() {
         println!("{}", &i);
     }
 }

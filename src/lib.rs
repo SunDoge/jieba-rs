@@ -131,9 +131,9 @@ impl Tokenizer {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
         // let logtotal =
-        // for idx in (-1..n - 1).rev() {
+        for idx in (0..n).rev() {
             // route.insert(idx, )
-        // }
+        }
 
     }
 
