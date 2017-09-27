@@ -28,7 +28,7 @@ pub fn get_abs_path(path: &str) -> String {
 
 pub struct Tokenizer {
     // dictionary:
-    total: i32,
+    total: u32,
     initialized: bool,
     dictionary: Option<String>,
     freq: Map<String, u32>,
@@ -56,29 +56,29 @@ impl Tokenizer {
         }
     }
 
-    pub fn gen_pfdict<'a>(&self, f: &'a str) -> (Map<&'a str, u32>, u32) {
+    pub fn gen_pfdict(&self, f: &str) -> (Map<String, u32>, u32) {
         let mut lfreq = Map::new();
         let mut ltotal = 0;
         // let f_name =
         // let mut contents = String::new();
         // f.read_to_string(&mut contents);
-        for line in f.lines() {
+        for (lineno, line) in f.lines().enumerate() {
             // TODO: error handle
             let line = line.trim();
             // println!("line: {}", line);
-            let v: Vec<&'a str> = line.split(' ').collect();
+            let v: Vec<&str> = line.split(' ').collect();
             let word = v[0];
             let freq: u32 = v[1].parse().unwrap();
             // println!("{} : {}", word, freq);
-            lfreq.insert(word, freq);
+            lfreq.insert(word.to_string(), freq);
             ltotal += freq;
 
             for ch in word.char_indices() {
                 // let mut word = word;
-                let wfrag = &word[..ch.0 + ch.1.len_utf8()];
+                let wfrag = word[..ch.0 + ch.1.len_utf8()].to_string();
                 // println!("wfrag = {}", &wfrag);
                 if !lfreq.contains_key(&wfrag) {
-                    lfreq.insert(&wfrag, 0);
+                    lfreq.insert(wfrag, 0);
                 }
 
             }
@@ -115,7 +115,11 @@ impl Tokenizer {
             self.dictionary.clone()
         };
 
-        println!("{:?}", &abs_path);
+        println!("abs_path = {:?}", &abs_path);
+        let contents = self.get_dict_file().unwrap();
+        let (freq, total) = self.gen_pfdict(&contents);
+        self.freq = freq;
+        self.total = total;
     }
 
     pub fn check_initialized(&mut self) {
@@ -126,13 +130,16 @@ impl Tokenizer {
 
     pub fn calc(&self,
                 sentence: &str,
-                dag: Map<usize, Vec<usize>>,
+                dag: &Map<usize, Vec<usize>>,
                 route: &mut Map<usize, (usize, usize)>) {
         let n = sentence.chars().count();
         route.insert(n, (0, 0));
-        // let logtotal =
+        let logtotal = (self.total as f64).log2() as u32;
         for idx in (0..n).rev() {
-            // route.insert(idx, )
+            // route.insert(idx)
+            // for (i, x) in dag[&idx].iter().enumerate() {
+            // println!("{}-{}", i, x);
+            // }
         }
 
     }
@@ -163,11 +170,21 @@ impl Tokenizer {
         dag
     }
 
-    fn cut_all(&self, sentence: &str) {}
+    fn cut_all(&mut self, sentence: &str) {
+        let dag = self.get_dag(&sentence);
+        let old_j = -1;
+        for (k, l) in dag {
+            println!("{:?}", l);
+        }
+    }
 
-    fn cut_dag(&self, sentence: &str) {}
+    fn cut_dag(&mut self, sentence: &str) {
+        let dag = self.get_dag(&sentence);
+        let mut route: Map<usize, (usize, usize)> = Map::new();
+        self.calc(&sentence, &dag, &mut route);
+    }
 
-    fn cut_dag_no_hmm(&self, sentence: &str) {}
+    fn cut_dag_no_hmm(&mut self, sentence: &str) {}
 
     /// The main function that segments an entire sentence that contains
     /// Chinese characters into seperated words.
@@ -176,7 +193,7 @@ impl Tokenizer {
     /// - sentence: The str(unicode) to be segmented.
     /// - cut_all: Model type. True for full pattern, False for accurate pattern.
     /// - HMM: Whether to use the Hidden Markov Model.
-    pub fn cut(&self, sentence: &str, cut_all: bool, hmm: bool) {
+    pub fn cut(&mut self, sentence: &str, cut_all: bool, hmm: bool) {
         // sentence = strdecode(&sentence);
 
         let (re_han, re_skip) = if cut_all {
@@ -188,15 +205,18 @@ impl Tokenizer {
         };
 
         let cut_block = if cut_all {
-
+            Self::cut_all
         } else if hmm {
-
+            Self::cut_dag
         } else {
-
+            Self::cut_dag_no_hmm
         };
+        // let cut_block = Self::cut_all;
 
-        let cap = re_han.captures(&sentence);
-        // println!("{:?}", cap);
+        for blk in re_han.captures_iter(&sentence) {
+            println!("blk = {:?}", &blk[1]);
+            cut_block(self, &blk[1]);
+        }
 
     }
 }

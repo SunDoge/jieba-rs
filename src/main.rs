@@ -23,15 +23,15 @@ fn main() {
     // let path = jiebars::get_abs_path(path);
     // println!("{}", jiebars::get_abs_path(path));
     let mut tk = jiebars::Tokenizer::new(None);
-    let sentence = "我来到北京清华大学";
-    // println!("{:?}", tk.cut(&sentence, true, true));
+    let sentence = "小明硕士毕业于中国科学院计算所，后在日本京都大学深造";
+    println!("{:?}", tk.cut(&sentence, false, true));
     // println!("{:?}", tk.get_dag(&sentence));
     // let contents = tk.get_dict_file().unwrap();
     // let (freq, total) = tk.gen_pfdict(&contents);
     // println!("{:?}: {}", freq, total);
     // jiebars::enable_parallel(0);
-    let n = 5;
-    for i in (0..n).rev() {
-        println!("{}", &i);
-    }
+    // let n = 5;
+    // for i in (-1..n - 1).rev() {
+    //     println!("{}", &i);
+    // }
 }
