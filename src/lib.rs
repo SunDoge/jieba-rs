@@ -56,7 +56,7 @@ impl Tokenizer {
         }
     }
 
-    pub fn gen_pfdict<'a>(&self, f: &'a str) -> (Map<String, u32>, u32) {
+    pub fn gen_pfdict(&self, f: &str) -> (Map<String, u32>, u32) {
         let mut lfreq = Map::new();
         let mut ltotal = 0;
         // let f_name =
@@ -66,7 +66,7 @@ impl Tokenizer {
             // TODO: error handle
             let line = line.trim();
             // println!("line: {}", line);
-            let v: Vec<&'a str> = line.split(' ').collect();
+            let v: Vec<&str> = line.split(' ').collect();
             let word = v[0];
             let freq: u32 = v[1].parse().unwrap();
             // println!("{} : {}", word, freq);
@@ -118,6 +118,8 @@ impl Tokenizer {
         println!("abs_path = {:?}", &abs_path);
         let contents = self.get_dict_file().unwrap();
         let (freq, total) = self.gen_pfdict(&contents);
+        self.freq = freq;
+        self.total = total;
     }
 
     pub fn check_initialized(&mut self) {
