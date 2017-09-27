@@ -152,14 +152,15 @@ impl Tokenizer {
             let mut tmplist = Vec::new();
             let mut i = k;
             let mut frag = sentence.chars().nth(k).unwrap().to_string();
-            while i < n && self.freq.contains_key(&frag) {
+            // The i must < n - 1 due to the difference between rust and python
+            while i < n - 1 && self.freq.contains_key(&frag) {
                 if self.freq[&frag] > 0 {
                     tmplist.push(i);
                 }
                 i += 1;
                 frag = sentence[sentence.char_indices().nth(k).unwrap().0..
-                       sentence.char_indices().nth(i + 1).unwrap().0 +
-                       sentence.char_indices().nth(i + 1).unwrap().1.len_utf8()]
+                       sentence.char_indices().nth(i).unwrap().0 +
+                       sentence.char_indices().nth(i).unwrap().1.len_utf8()]
                     .to_string();
             }
             if tmplist.is_empty() {
