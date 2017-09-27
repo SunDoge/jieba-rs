@@ -1,3 +1,4 @@
+#![feature(generators, generator_trait)]
 extern crate regex;
 extern crate num_cpus;
 
@@ -13,6 +14,8 @@ use std::env;
 use std::error::Error;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
+
+use std::ops::{Generator, GeneratorState};
 // use std::path;
 
 
@@ -120,6 +123,7 @@ impl Tokenizer {
         let (freq, total) = self.gen_pfdict(&contents);
         self.freq = freq;
         self.total = total;
+        self.initialized = true;
     }
 
     pub fn check_initialized(&mut self) {
@@ -131,42 +135,67 @@ impl Tokenizer {
     pub fn calc(&self,
                 sentence: &str,
                 dag: &Map<usize, Vec<usize>>,
-                route: &mut Map<usize, (usize, usize)>) {
+                route: &mut Map<usize, (f64, usize)>) {
         let n = sentence.chars().count();
-        route.insert(n, (0, 0));
-        let logtotal = (self.total as f64).log2() as u32;
+        route.insert(n, (0.0, 0));
+        let logtotal = (self.total as f64).ln();
         for idx in (0..n).rev() {
             // route.insert(idx)
-            // for (i, x) in dag[&idx].iter().enumerate() {
-            // println!("{}-{}", i, x);
-            // }
-        }
+            let xs: Vec<(f64, usize)> = dag[&idx]
+                .iter()
+                .map(|&x| {
+                    let logfreq = if let Some(&freq) = self.freq
+                        .get(&sentence[sentence.char_indices().nth(idx).unwrap().0..
+                              sentence.char_indices().nth(x).unwrap().0 +
+                              sentence.char_indices().nth(x).unwrap().1.len_utf8()]) {
+                        (freq as f64).ln()
+                    } else {
+                        0.0
+                    };
 
+                    (logfreq - logtotal + route[&(x + 1)].0, x)
+                })
+                .collect();
+
+            let max: (f64, usize) =
+                *xs.iter().max_by(|x, y| x.0.partial_cmp(&y.0).unwrap()).unwrap();
+            // println!("{:?}", &max);
+            // println!("{:?}", route[&(idx + 1)]);
+
+            route.insert(idx, max);
+
+        }
+        // println!("{:?}", &route);
     }
 
     pub fn get_dag(&mut self, sentence: &str) -> Map<usize, Vec<usize>> {
         self.check_initialized();
         let mut dag = Map::new();
         let n = sentence.chars().count();
-        for k in 0..n - 1 {
+        for k in 0..n {
             let mut tmplist = Vec::new();
             let mut i = k;
             let mut frag = sentence.chars().nth(k).unwrap().to_string();
+
             // The i must < n - 1 due to the difference between rust and python
-            while i < n - 1 && self.freq.contains_key(&frag) {
+            while i < n && self.freq.contains_key(&frag) {
+
                 if self.freq[&frag] > 0 {
                     tmplist.push(i);
                 }
                 i += 1;
+                let _i = if i < n { i } else { n - 1 };
                 frag = sentence[sentence.char_indices().nth(k).unwrap().0..
-                       sentence.char_indices().nth(i).unwrap().0 +
-                       sentence.char_indices().nth(i).unwrap().1.len_utf8()]
+                       sentence.char_indices().nth(_i).unwrap().0 +
+                       sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
                     .to_string();
+
             }
             if tmplist.is_empty() {
                 tmplist.push(k);
             }
             dag.insert(k, tmplist);
+            // println!("k={}", k);
         }
         dag
     }
@@ -181,7 +210,7 @@ impl Tokenizer {
 
     fn cut_dag(&mut self, sentence: &str) {
         let dag = self.get_dag(&sentence);
-        let mut route: Map<usize, (usize, usize)> = Map::new();
+        let mut route: Map<usize, (f64, usize)> = Map::new();
         self.calc(&sentence, &dag, &mut route);
     }
 
