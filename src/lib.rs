@@ -1,6 +1,6 @@
-#![feature(generators, generator_trait)]
-extern crate regex;
+extern crate coroutine;
 extern crate num_cpus;
+extern crate regex;
 
 pub mod analyse;
 pub mod posseg;
@@ -8,15 +8,17 @@ mod compact;
 
 use std::fs::File;
 use regex::Regex;
-use std::collections::HashMap as Map;
+use std::collections::BTreeMap as Map;
 use std::env;
 // use std::io;
 use std::error::Error;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use std::ops::{Generator, GeneratorState};
+use coroutine::asymmetric::{Coroutine, Handle};
 // use std::path;
+
+use compact::{SplitCaptures, SplitState};
 
 
 const DEFAULT_DICT_NAME: &'static str = "dict.txt";
@@ -40,22 +42,18 @@ pub struct Tokenizer {
 impl Tokenizer {
     pub fn new(dictionary: Option<&str>) -> Tokenizer {
         match dictionary {
-            Some(dict) => {
-                Tokenizer {
-                    total: 0,
-                    initialized: false,
-                    dictionary: Some(get_abs_path(dict)),
-                    freq: Map::new(),
-                }
-            }
-            None => {
-                Tokenizer {
-                    total: 0,
-                    initialized: false,
-                    dictionary: None,
-                    freq: Map::new(),
-                }
-            }
+            Some(dict) => Tokenizer {
+                total: 0,
+                initialized: false,
+                dictionary: Some(get_abs_path(dict)),
+                freq: Map::new(),
+            },
+            None => Tokenizer {
+                total: 0,
+                initialized: false,
+                dictionary: None,
+                freq: Map::new(),
+            },
         }
     }
 
@@ -83,7 +81,6 @@ impl Tokenizer {
                 if !lfreq.contains_key(&wfrag) {
                     lfreq.insert(wfrag, 0);
                 }
-
             }
         }
         (lfreq, ltotal)
@@ -132,10 +129,12 @@ impl Tokenizer {
         }
     }
 
-    pub fn calc(&self,
-                sentence: &str,
-                dag: &Map<usize, Vec<usize>>,
-                route: &mut Map<usize, (f64, usize)>) {
+    pub fn calc(
+        &self,
+        sentence: &str,
+        dag: &Map<usize, Vec<usize>>,
+        route: &mut Map<usize, (f64, usize)>,
+    ) {
         let n = sentence.chars().count();
         route.insert(n, (0.0, 0));
         let logtotal = (self.total as f64).ln();
@@ -144,10 +143,11 @@ impl Tokenizer {
             let xs: Vec<(f64, usize)> = dag[&idx]
                 .iter()
                 .map(|&x| {
-                    let logfreq = if let Some(&freq) = self.freq
-                        .get(&sentence[sentence.char_indices().nth(idx).unwrap().0..
-                              sentence.char_indices().nth(x).unwrap().0 +
-                              sentence.char_indices().nth(x).unwrap().1.len_utf8()]) {
+                    let logfreq = if let Some(&freq) = self.freq.get(
+                        &sentence[sentence.char_indices().nth(idx).unwrap().0..
+                                      sentence.char_indices().nth(x).unwrap().0 +
+                                          sentence.char_indices().nth(x).unwrap().1.len_utf8()],
+                    ) {
                         (freq as f64).ln()
                     } else {
                         0.0
@@ -157,13 +157,13 @@ impl Tokenizer {
                 })
                 .collect();
 
-            let max: (f64, usize) =
-                *xs.iter().max_by(|x, y| x.0.partial_cmp(&y.0).unwrap()).unwrap();
+            let max: (f64, usize) = *xs.iter()
+                .max_by(|x, y| x.0.partial_cmp(&y.0).unwrap())
+                .unwrap();
             // println!("{:?}", &max);
             // println!("{:?}", route[&(idx + 1)]);
 
             route.insert(idx, max);
-
         }
         // println!("{:?}", &route);
     }
@@ -179,17 +179,15 @@ impl Tokenizer {
 
             // The i must < n - 1 due to the difference between rust and python
             while i < n && self.freq.contains_key(&frag) {
-
                 if self.freq[&frag] > 0 {
                     tmplist.push(i);
                 }
                 i += 1;
                 let _i = if i < n { i } else { n - 1 };
                 frag = sentence[sentence.char_indices().nth(k).unwrap().0..
-                       sentence.char_indices().nth(_i).unwrap().0 +
-                       sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
+                                    sentence.char_indices().nth(_i).unwrap().0 +
+                                        sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
                     .to_string();
-
             }
             if tmplist.is_empty() {
                 tmplist.push(k);
@@ -200,21 +198,49 @@ impl Tokenizer {
         dag
     }
 
-    fn cut_all(&mut self, sentence: &str) {
+    fn cut_all(&mut self, sentence: &str) -> Vec<String> {
         let dag = self.get_dag(&sentence);
-        let old_j = -1;
+        let mut old_j = 0;
+        let mut segs = Vec::new();
         for (k, l) in dag {
-            println!("{:?}", l);
+            if l.len() == 1 && (old_j == 0 || k > old_j) {
+                segs.push(
+                    sentence[sentence.char_indices().nth(k).unwrap().0..
+                                 sentence.char_indices().nth(l[0]).unwrap().0 +
+                                     sentence.char_indices().nth(l[0]).unwrap().1.len_utf8()]
+                        .to_string(),
+                );
+                old_j = l[0];
+            } else {
+                for j in l {
+                    if j > k {
+                        segs.push(
+                            sentence[sentence.char_indices().nth(k).unwrap().0..
+                                         sentence.char_indices().nth(j).unwrap().0 +
+                                             sentence.char_indices().nth(j).unwrap().1.len_utf8()]
+                                .to_string(),
+                        );
+                        old_j = j;
+                    }
+                }
+            }
         }
+        segs
     }
 
-    fn cut_dag(&mut self, sentence: &str) {
+    fn cut_dag(&mut self, sentence: &str) -> Vec<String> {
         let dag = self.get_dag(&sentence);
         let mut route: Map<usize, (f64, usize)> = Map::new();
         self.calc(&sentence, &dag, &mut route);
+        let mut x = 0;
+        let buf = String::new();
+        let n = sentence.chars().count();
+        vec!["fuck".to_string()]
     }
 
-    fn cut_dag_no_hmm(&mut self, sentence: &str) {}
+    fn cut_dag_no_hmm(&mut self, sentence: &str) -> Vec<String> {
+        vec!["fuck".to_string()]
+    }
 
     /// The main function that segments an entire sentence that contains
     /// Chinese characters into seperated words.
@@ -227,11 +253,15 @@ impl Tokenizer {
         // sentence = strdecode(&sentence);
 
         let (re_han, re_skip) = if cut_all {
-            (Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
-             Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap())
+            (
+                Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
+                Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap(),
+            )
         } else {
-            (Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
-             Regex::new(r"(\r\n|\s)").unwrap())
+            (
+                Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
+                Regex::new(r"(\r\n|\s)").unwrap(),
+            )
         };
 
         let cut_block = if cut_all {
@@ -241,13 +271,44 @@ impl Tokenizer {
         } else {
             Self::cut_dag_no_hmm
         };
-        // let cut_block = Self::cut_all;
 
-        for blk in re_han.captures_iter(&sentence) {
-            println!("blk = {:?}", &blk[1]);
-            cut_block(self, &blk[1]);
+        // println!("s = {}", &sentence);
+        // for blk in re_han.split(&sentence) {
+        //     println!("blk = >{}<", &blk);
+        //     // cut_block(self, &blk[1]);
+        // }
+        // let segs = Vec::new();
+        let blocks = SplitCaptures::new(&re_han, &sentence);
+        for blk in blocks {
+            match blk {
+                SplitState::Captured(caps) => {
+                    println!("captured: {:?}", &caps[0]);
+                    for word in cut_block(self, &caps[0]) {
+                        println!("{}", &word);
+                    }
+                }
+
+                SplitState::Unmatched(t) => {
+                    // println!("unmatched: {:?}", t);
+                    let tmp = SplitCaptures::new(&re_skip, &t);
+                    for x in tmp {
+                        match x {
+                            SplitState::Captured(caps) => {
+                                println!("{}", &caps[0]);
+                            }
+                            SplitState::Unmatched(t) => if !cut_all {
+                                for xx in t.chars() {
+                                    println!("{}", &xx);
+                                }
+                            } else {
+                                println!("{}", &t);
+                            },
+                        }
+                    }
+                }
+            }
         }
-
+        // println!("{:?}", );
     }
 }
 
