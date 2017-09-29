@@ -233,8 +233,29 @@ impl Tokenizer {
         let mut route: Map<usize, (f64, usize)> = Map::new();
         self.calc(&sentence, &dag, &mut route);
         let mut x = 0;
-        let buf = String::new();
+        let mut buf = String::new();
         let n = sentence.chars().count();
+        let mut segs = Vec::new();
+        while x < n {
+            let y = route[&x].1 + 1;
+            let l_word =
+                &sentence[sentence.char_indices().nth(x).unwrap().0..
+                              sentence.char_indices().nth(y - 1).unwrap().0 +
+                                  sentence.char_indices().nth(y - 1).unwrap().1.len_utf8()];
+            if y - x == 1 {
+                buf += l_word;
+            } else {
+                if buf.len() > 0 {
+                    if buf.len() == 1 {
+                        segs.push(buf.clone());
+                        buf.clear();
+                    } else {
+                        if !self.freq.contains_key(&buf) {}
+                    }
+                }
+            }
+        }
+
         vec!["fuck".to_string()]
     }
 
