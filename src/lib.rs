@@ -1,10 +1,13 @@
-extern crate coroutine;
 extern crate num_cpus;
 extern crate regex;
+
+#[macro_use]
+extern crate lazy_static;
 
 pub mod analyse;
 pub mod posseg;
 mod compact;
+pub mod finalseg;
 
 use std::fs::File;
 use regex::Regex;
@@ -15,10 +18,9 @@ use std::error::Error;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
 
-use coroutine::asymmetric::{Coroutine, Handle};
 // use std::path;
 
-use compact::{SplitCaptures, SplitState};
+use compact::{char_slice, SplitCaptures, SplitState};
 
 
 const DEFAULT_DICT_NAME: &'static str = "dict.txt";
@@ -201,25 +203,15 @@ impl Tokenizer {
     fn cut_all(&mut self, sentence: &str) -> Vec<String> {
         let dag = self.get_dag(&sentence);
         let mut old_j = 0;
-        let mut segs = Vec::new();
+        let mut segs: Vec<String> = Vec::new();
         for (k, l) in dag {
             if l.len() == 1 && (old_j == 0 || k > old_j) {
-                segs.push(
-                    sentence[sentence.char_indices().nth(k).unwrap().0..
-                                 sentence.char_indices().nth(l[0]).unwrap().0 +
-                                     sentence.char_indices().nth(l[0]).unwrap().1.len_utf8()]
-                        .to_string(),
-                );
+                segs.push(char_slice(sentence, k, l[0] + 1).to_string());
                 old_j = l[0];
             } else {
                 for j in l {
                     if j > k {
-                        segs.push(
-                            sentence[sentence.char_indices().nth(k).unwrap().0..
-                                         sentence.char_indices().nth(j).unwrap().0 +
-                                             sentence.char_indices().nth(j).unwrap().1.len_utf8()]
-                                .to_string(),
-                        );
+                        segs.push(char_slice(sentence, k, j + 1).to_string());
                         old_j = j;
                     }
                 }
@@ -235,28 +227,38 @@ impl Tokenizer {
         let mut x = 0;
         let mut buf = String::new();
         let n = sentence.chars().count();
-        let mut segs = Vec::new();
+        let mut segs: Vec<String> = Vec::new();
+        // println!("while", );
         while x < n {
             let y = route[&x].1 + 1;
-            let l_word =
-                &sentence[sentence.char_indices().nth(x).unwrap().0..
-                              sentence.char_indices().nth(y - 1).unwrap().0 +
-                                  sentence.char_indices().nth(y - 1).unwrap().1.len_utf8()];
+            let l_word = char_slice(sentence, x, y);
             if y - x == 1 {
-                buf += l_word;
+                buf.push_str(l_word);
             } else {
                 if buf.len() > 0 {
                     if buf.len() == 1 {
                         segs.push(buf.clone());
                         buf.clear();
+                        
                     } else {
-                        if !self.freq.contains_key(&buf) {}
+                        if !self.freq.contains_key(&buf) {
+                            let recognized = finalseg::cut(&buf);
+                            for t in recognized {
+                                segs.push(t.to_string());
+                            }
+                        } else {
+                            segs.push(buf.clone());
+                        }
+                        buf.clear();
+                      
                     }
+                    segs.push(l_word.to_string());
                 }
             }
+            x = y;
         }
-
-        vec!["fuck".to_string()]
+        segs
+        // vec!["fuck"]
     }
 
     fn cut_dag_no_hmm(&mut self, sentence: &str) -> Vec<String> {

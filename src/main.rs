@@ -1,6 +1,6 @@
 extern crate jiebars;
 
-use std::collections::HashMap;
+// use std::collections::HashMap;
 
 fn main() {
     // let mut p = HashMap::new();
@@ -24,7 +24,9 @@ fn main() {
     // println!("{}", jiebars::get_abs_path(path));
     let mut tk = jiebars::Tokenizer::new(None);
     let sentence = "我来到北京清华大学";
-    println!("{:?}", tk.cut(&sentence, true, true));
+    println!("{:?}", tk.cut(&sentence, false, true));
+    // println!("{:?}", *jiebars::finalseg::prob_start::P);
+    // println!("{:?}", *jiebars::finalseg::prob_start::P);
     // println!("{:?}", tk.get_dag(&sentence));
     // let contents = tk.get_dict_file().unwrap();
     // let (freq, total) = tk.gen_pfdict(&contents);

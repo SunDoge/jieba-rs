@@ -1,4 +1,4 @@
-extern crate regex;
+// extern crate regex;
 
 use regex::{CaptureMatches, Captures, Regex};
 
@@ -52,8 +52,14 @@ impl<'r, 't> Iterator for SplitCaptures<'r, 't> {
     }
 }
 
-pub struct Seg {
-    seg: char,
-}
+// pub struct Seg {
+//     seg: char,
+// }
 
-pub fn resolve_filename() {}
+// pub fn resolve_filename() {}
+
+pub fn char_slice(sentence: &str, start: usize, end: usize) -> &str {
+    &sentence[sentence.char_indices().nth(start).unwrap().0..
+                 sentence.char_indices().nth(end - 1).unwrap().0 +
+                     sentence.char_indices().nth(end - 1).unwrap().1.len_utf8()]
+}
