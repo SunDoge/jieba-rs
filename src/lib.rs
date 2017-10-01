@@ -120,6 +120,7 @@ impl Tokenizer {
         println!("abs_path = {:?}", &abs_path);
         let contents = self.get_dict_file().unwrap();
         let (freq, total) = self.gen_pfdict(&contents);
+        // println!("{:?}", &freq);
         self.freq = freq;
         self.total = total;
         self.initialized = true;
@@ -240,7 +241,13 @@ impl Tokenizer {
                         segs.push(buf.clone());
                         buf.clear();
                     } else {
+                        // In python, both not None and not 0 are true.
                         if !self.freq.contains_key(&buf) {
+                            let recognized = finalseg::cut(&buf);
+                            for t in recognized {
+                                segs.push(t.to_string());
+                            }
+                        } else if self.freq[&buf] == 0 {
                             let recognized = finalseg::cut(&buf);
                             for t in recognized {
                                 segs.push(t.to_string());
