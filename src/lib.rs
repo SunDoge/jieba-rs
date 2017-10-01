@@ -146,9 +146,9 @@ impl Tokenizer {
                 .iter()
                 .map(|&x| {
                     let logfreq = if let Some(&freq) = self.freq.get(
-                        &sentence[sentence.char_indices().nth(idx).unwrap().0..
-                                      sentence.char_indices().nth(x).unwrap().0 +
-                                          sentence.char_indices().nth(x).unwrap().1.len_utf8()],
+                        &sentence[sentence.char_indices().nth(idx).unwrap().0
+                                      ..sentence.char_indices().nth(x).unwrap().0
+                                          + sentence.char_indices().nth(x).unwrap().1.len_utf8()],
                     ) {
                         (freq as f64).ln()
                     } else {
@@ -186,9 +186,9 @@ impl Tokenizer {
                 }
                 i += 1;
                 let _i = if i < n { i } else { n - 1 };
-                frag = sentence[sentence.char_indices().nth(k).unwrap().0..
-                                    sentence.char_indices().nth(_i).unwrap().0 +
-                                        sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
+                frag = sentence[sentence.char_indices().nth(k).unwrap().0
+                                    ..sentence.char_indices().nth(_i).unwrap().0
+                                        + sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
                     .to_string();
             }
             if tmplist.is_empty() {
@@ -239,7 +239,6 @@ impl Tokenizer {
                     if buf.len() == 1 {
                         segs.push(buf.clone());
                         buf.clear();
-                        
                     } else {
                         if !self.freq.contains_key(&buf) {
                             let recognized = finalseg::cut(&buf);
@@ -247,16 +246,33 @@ impl Tokenizer {
                                 segs.push(t.to_string());
                             }
                         } else {
-                            segs.push(buf.clone());
+                            for elem in buf.chars() {
+                                segs.push(elem.to_string());
+                            }
                         }
                         buf.clear();
-                      
                     }
-                    segs.push(l_word.to_string());
                 }
+                segs.push(l_word.to_string());
             }
             x = y;
         }
+        if buf.len() > 0 {
+            if buf.len() == 1 {
+                segs.push(buf.clone());
+            } else if !self.freq.contains_key(&buf) {
+                let recognized = finalseg::cut(&buf);
+                for t in recognized {
+                    segs.push(t.to_string());
+                }
+            } else {
+                for elem in buf.chars() {
+                    segs.push(elem.to_string());
+                }
+            }
+            
+        }
+
         segs
         // vec!["fuck"]
     }
@@ -272,7 +288,7 @@ impl Tokenizer {
     /// - sentence: The str(unicode) to be segmented.
     /// - cut_all: Model type. True for full pattern, False for accurate pattern.
     /// - HMM: Whether to use the Hidden Markov Model.
-    pub fn cut(&mut self, sentence: &str, cut_all: bool, hmm: bool) {
+    pub fn cut(&mut self, sentence: &str, cut_all: bool, hmm: bool) -> Vec<String> {
         // sentence = strdecode(&sentence);
 
         let (re_han, re_skip) = if cut_all {
@@ -302,12 +318,14 @@ impl Tokenizer {
         // }
         // let segs = Vec::new();
         let blocks = SplitCaptures::new(&re_han, &sentence);
+        let mut segs: Vec<String> = Vec::new();
         for blk in blocks {
             match blk {
                 SplitState::Captured(caps) => {
                     println!("captured: {:?}", &caps[0]);
                     for word in cut_block(self, &caps[0]) {
-                        println!("{}", &word);
+                        // println!("{}", &word);
+                        segs.push(word.to_string());
                     }
                 }
 
@@ -317,21 +335,25 @@ impl Tokenizer {
                     for x in tmp {
                         match x {
                             SplitState::Captured(caps) => {
-                                println!("{}", &caps[0]);
+                                // println!("{}", &caps[0]);
+                                segs.push(caps[0].to_string());
                             }
                             SplitState::Unmatched(t) => if !cut_all {
                                 for xx in t.chars() {
-                                    println!("{}", &xx);
+                                    // println!("{}", &xx);
+                                    segs.push(xx.to_string());
                                 }
                             } else {
-                                println!("{}", &t);
+                                // println!("{}", &t);
+                                segs.push(t.to_string());
                             },
                         }
                     }
                 }
             }
         }
-        // println!("{:?}", );
+        // println!("{:?}", segs);
+        segs
     }
 }
 

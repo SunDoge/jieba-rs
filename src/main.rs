@@ -23,7 +23,7 @@ fn main() {
     // let path = jiebars::get_abs_path(path);
     // println!("{}", jiebars::get_abs_path(path));
     let mut tk = jiebars::Tokenizer::new(None);
-    let sentence = "我来到北京清华大学";
+    let sentence = "小明硕士毕业于中国科学院计算所，后在日本京都大学深造";
     println!("{:?}", tk.cut(&sentence, false, true));
     // println!("{:?}", *jiebars::finalseg::prob_start::P);
     // println!("{:?}", *jiebars::finalseg::prob_start::P);
