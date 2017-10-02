@@ -162,6 +162,6 @@ pub fn cut(sentence: &str) -> Vec<String> {
             }
         }
     }
-    println!("segs in cut = {:?}", segs);
+    // println!("segs in cut = {:?}", segs);
     segs
 }
