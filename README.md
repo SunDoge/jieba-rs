@@ -9,5 +9,5 @@ jiebars
 
 - [x] cut all 全模式
 - [x] cut dag 默认模式
-- [ ] cut dag no hmm
+- [x] cut dag no hmm
 - [ ] cut for search

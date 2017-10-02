@@ -146,9 +146,9 @@ impl Tokenizer {
                 .iter()
                 .map(|&x| {
                     let logfreq = if let Some(&freq) = self.freq.get(
-                        &sentence[sentence.char_indices().nth(idx).unwrap().0
-                                      ..sentence.char_indices().nth(x).unwrap().0
-                                          + sentence.char_indices().nth(x).unwrap().1.len_utf8()],
+                        &sentence[sentence.char_indices().nth(idx).unwrap().0..
+                                      sentence.char_indices().nth(x).unwrap().0 +
+                                          sentence.char_indices().nth(x).unwrap().1.len_utf8()],
                     ) {
                         (freq as f64).ln()
                     } else {
@@ -186,9 +186,9 @@ impl Tokenizer {
                 }
                 i += 1;
                 let _i = if i < n { i } else { n - 1 };
-                frag = sentence[sentence.char_indices().nth(k).unwrap().0
-                                    ..sentence.char_indices().nth(_i).unwrap().0
-                                        + sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
+                frag = sentence[sentence.char_indices().nth(k).unwrap().0..
+                                    sentence.char_indices().nth(_i).unwrap().0 +
+                                        sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
                     .to_string();
             }
             if tmplist.is_empty() {
@@ -224,6 +224,7 @@ impl Tokenizer {
         let dag = self.get_dag(&sentence);
         let mut route: Map<usize, (f64, usize)> = Map::new();
         self.calc(&sentence, &dag, &mut route);
+        // println!("{:?}", &route);
         let mut x = 0;
         let mut buf = String::new();
         let n = sentence.chars().count();
@@ -234,6 +235,7 @@ impl Tokenizer {
             let l_word = char_slice(sentence, x, y);
             if y - x == 1 {
                 buf.push_str(l_word);
+                println!("buf = {}", &buf);
             } else {
                 if buf.len() > 0 {
                     if buf.len() == 1 {
@@ -270,7 +272,6 @@ impl Tokenizer {
                     segs.push(elem.to_string());
                 }
             }
-            
         }
 
         segs
@@ -278,7 +279,37 @@ impl Tokenizer {
     }
 
     fn cut_dag_no_hmm(&mut self, sentence: &str) -> Vec<String> {
-        vec!["fuck".to_string()]
+        let dag = self.get_dag(&sentence);
+        let mut route: Map<usize, (f64, usize)> = Map::new();
+        self.calc(&sentence, &dag, &mut route);
+        // println!("{:?}", &route);
+        let mut x = 0;
+        let mut buf = String::new();
+        let n = sentence.chars().count();
+        let mut segs: Vec<String> = Vec::new();
+        let re_eng = Regex::new(r"[a-zA-Z0-9]").unwrap();
+
+        while x < n {
+            let y = route[&x].1 + 1;
+            let l_word = char_slice(sentence, x, y);
+            if re_eng.is_match(l_word) && l_word.chars().count() == 1 {
+                buf.push_str(l_word);
+                x = y;
+            } else {
+                if buf.chars().count() > 0 {
+                    segs.push(buf.clone());
+                    buf.clear();
+                }
+                segs.push(l_word.to_string());
+                x = y;
+            }
+        }
+
+        if buf.chars().count() > 0 {
+            segs.push(buf.clone());
+            buf.clear();
+        }
+        segs
     }
 
     /// The main function that segments an entire sentence that contains

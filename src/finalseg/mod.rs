@@ -145,6 +145,7 @@ pub fn cut(sentence: &str) -> Vec<String> {
     for blk in blocks {
         match blk {
             SplitState::Captured(caps) => {
+                println!("{:?}", caps);
                 for word in __cut(&caps[0]) {
                     // TODO: Force split words
                     segs.push(word.to_string());
