@@ -10,4 +10,6 @@ jiebars
 - [x] cut all 全模式
 - [x] cut dag 默认模式
 - [x] cut dag no hmm
-- [ ] cut for search
+- [x] cut for search
+- [ ] cache
+- [ ] multithread

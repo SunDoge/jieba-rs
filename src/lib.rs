@@ -236,7 +236,7 @@ impl Tokenizer {
             let l_word = char_slice(sentence, x, y);
             if y - x == 1 {
                 buf.push_str(l_word);
-                println!("buf = {}", &buf);
+                // println!("buf = {}", &buf);
             } else {
                 if buf.len() > 0 {
                     if buf.len() == 1 {
@@ -393,7 +393,38 @@ impl Tokenizer {
         // println!("{:?}", segs);
         segs
     }
+
+    /// Finer segmentation for search engines.
+    pub fn cut_for_search(&mut self, sentence: &str, hmm: bool) -> Vec<String> {
+        let words = self.cut(sentence, false, hmm);
+        let mut segs: Vec<String> = Vec::new();
+        for w in words {
+            if w.chars().count() > 2 {
+                for i in 0..w.chars().count() - 1 {
+                    let gram2 = char_slice(&w, i, i + 2);
+                    if self.freq.contains_key(gram2) && self.freq[gram2] > 0 {
+                        segs.push(gram2.to_string());
+                    }
+                }
+            }
+
+            if w.chars().count() > 3 {
+                for i in 0..w.chars().count() - 2 {
+                    let gram3 = char_slice(&w, i, i + 3);
+                    if self.freq.contains_key(gram3) && self.freq[gram3] > 0 {
+                        segs.push(gram3.to_string());
+                    }
+                }
+            }
+
+            segs.push(w.to_string());
+        }
+
+        segs
+    }
 }
+
+
 
 pub fn enable_parallel(processnum: usize) {
     let processnum = if processnum == 0 {
