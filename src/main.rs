@@ -24,8 +24,8 @@ fn main() {
     // let path = jiebars::get_abs_path(path);
     // println!("{}", jiebars::get_abs_path(path));
     let mut tk = jiebars::Tokenizer::new(None);
-    let sentence = "小明硕士";
-    println!("{:?}", tk.cut(&sentence, false, true));
+    let sentence = "我来到北京清华大学";
+    println!("{:?}", tk.cut(&sentence, true, true));
     // println!("{:?}", jiebars::cut(&sentence, false, true));
     println!("{:?}", tk.cut("如果放到post中将出错。", false, false));
     println!("{:?}", tk.cut_for_search("小明硕士毕业于中国科学院计算所，后在日本京都大学深造", true));

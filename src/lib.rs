@@ -131,6 +131,8 @@ impl Tokenizer {
         } else {
             None
         };
+
+        // println!("abs_path = {:?}", &abs_path);
         // let abs_path = if dictionary.is_some() {
         //     let _abs_path = get_abs_path(dictionary.unwrap());
         //     if self.dictionary == Some(_abs_path) && self.initialized {
@@ -149,6 +151,8 @@ impl Tokenizer {
             return Ok(());
         }
 
+        // println!("abs_path = {:?}", &abs_path);
+
         // default_logger
         // time()
         let cache_file = if self.cache_file.is_some() {
@@ -165,18 +169,20 @@ impl Tokenizer {
         tmpdir.push(&cache_file);
         // println!("cache: {:?}", &tmpdir);
         let mut load_from_cache_fail = true;
-        if metadata(&tmpdir)?.is_file() &&
-            (abs_path.is_none() ||
-                metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
+        if metadata(&tmpdir)?.is_file()
+            && (abs_path.is_none()
+                || metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
         {
             let cf = File::open(&tmpdir);
-            println!("cache: {:?}", &tmpdir);
+            println!("cache");
             match cf {
                 Ok(mut t) => {
                     let mut contents = String::new();
                     t.read_to_string(&mut contents)?;
                     let (freq, total): (Map<String, u32>, u32) =
                         serde_json::from_str(&contents).unwrap();
+                    self.freq = freq;
+                    self.total = total;
                     load_from_cache_fail = false;
                     println!("read from cache: {:?}", &tmpdir);
                 }
@@ -187,6 +193,8 @@ impl Tokenizer {
             }
         }
 
+
+        // println!("bool {}", load_from_cache_fail);
         if load_from_cache_fail {
             // println!("abs_path = {:?}", &abs_path);
             let contents = self.get_dict_file().unwrap();
@@ -237,9 +245,9 @@ impl Tokenizer {
                 .iter()
                 .map(|&x| {
                     let logfreq = if let Some(&freq) = self.freq.get(
-                        &sentence[sentence.char_indices().nth(idx).unwrap().0..
-                                      sentence.char_indices().nth(x).unwrap().0 +
-                                          sentence.char_indices().nth(x).unwrap().1.len_utf8()],
+                        &sentence[sentence.char_indices().nth(idx).unwrap().0
+                                      ..sentence.char_indices().nth(x).unwrap().0
+                                          + sentence.char_indices().nth(x).unwrap().1.len_utf8()],
                     ) {
                         (freq as f64).ln()
                     } else {
@@ -277,9 +285,9 @@ impl Tokenizer {
                 }
                 i += 1;
                 let _i = if i < n { i } else { n - 1 };
-                frag = sentence[sentence.char_indices().nth(k).unwrap().0..
-                                    sentence.char_indices().nth(_i).unwrap().0 +
-                                        sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
+                frag = sentence[sentence.char_indices().nth(k).unwrap().0
+                                    ..sentence.char_indices().nth(_i).unwrap().0
+                                        + sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
                     .to_string();
             }
             if tmplist.is_empty() {
