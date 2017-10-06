@@ -11,5 +11,6 @@ jiebars
 - [x] cut dag 默认模式
 - [x] cut dag no hmm
 - [x] cut for search
-- [ ] cache
+- [x] cache
+- [ ] lock
 - [ ] multithread

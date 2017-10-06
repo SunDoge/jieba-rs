@@ -56,10 +56,12 @@ impl<'r, 't> Iterator for SplitCaptures<'r, 't> {
 //     seg: char,
 // }
 
+pub fn strdecode(sentence: &str) {}
+
 // pub fn resolve_filename() {}
 
 pub fn char_slice(sentence: &str, start: usize, end: usize) -> &str {
     &sentence[sentence.char_indices().nth(start).unwrap().0..
-                 sentence.char_indices().nth(end - 1).unwrap().0 +
-                     sentence.char_indices().nth(end - 1).unwrap().1.len_utf8()]
+                  sentence.char_indices().nth(end - 1).unwrap().0 +
+                      sentence.char_indices().nth(end - 1).unwrap().1.len_utf8()]
 }

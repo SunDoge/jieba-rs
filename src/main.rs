@@ -1,4 +1,5 @@
 extern crate jiebars;
+extern crate clap;
 
 // use std::collections::HashMap;
 
@@ -25,6 +26,7 @@ fn main() {
     let mut tk = jiebars::Tokenizer::new(None);
     let sentence = "小明硕士";
     println!("{:?}", tk.cut(&sentence, false, true));
+    // println!("{:?}", jiebars::cut(&sentence, false, true));
     println!("{:?}", tk.cut("如果放到post中将出错。", false, false));
     println!("{:?}", tk.cut_for_search("小明硕士毕业于中国科学院计算所，后在日本京都大学深造", true));
     // println!("{:?}", *jiebars::finalseg::prob_start::P);

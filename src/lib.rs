@@ -1,5 +1,7 @@
+extern crate md5;
 extern crate num_cpus;
 extern crate regex;
+extern crate serde_json;
 
 #[macro_use]
 extern crate lazy_static;
@@ -9,7 +11,8 @@ pub mod posseg;
 mod compact;
 pub mod finalseg;
 
-use std::fs::File;
+// use std::fs;
+use std::fs::{metadata, File};
 use regex::Regex;
 use std::collections::BTreeMap as Map;
 use std::env;
@@ -17,6 +20,7 @@ use std::env;
 use std::error::Error;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
+// use std::path::Path;
 
 // use std::path;
 
@@ -24,7 +28,15 @@ use compact::{char_slice, SplitCaptures, SplitState};
 
 
 const DEFAULT_DICT_NAME: &'static str = "dict.txt";
-const DEFAULT_DICT: Option<String> = None;
+const DEFAULT_DICT: Option<&str> = None;
+
+
+lazy_static! {
+    static ref DT: Mutex<Tokenizer> =
+        Mutex::new(Tokenizer::new(DEFAULT_DICT))
+    ;
+}
+
 
 pub fn get_abs_path(path: &str) -> String {
     let mut cwd = env::current_dir().unwrap();
@@ -39,6 +51,7 @@ pub struct Tokenizer {
     initialized: bool,
     dictionary: Option<String>,
     freq: Map<String, u32>,
+    cache_file: Option<String>,
 }
 
 impl Tokenizer {
@@ -49,12 +62,14 @@ impl Tokenizer {
                 initialized: false,
                 dictionary: Some(get_abs_path(dict)),
                 freq: Map::new(),
+                cache_file: None,
             },
             None => Tokenizer {
                 total: 0,
                 initialized: false,
                 dictionary: None,
                 freq: Map::new(),
+                cache_file: None,
             },
         }
     }
@@ -103,27 +118,102 @@ impl Tokenizer {
         Ok(contents)
     }
 
-    pub fn initialize(&mut self, dictionary: Option<&str>) {
-        let abs_path = if let Some(dict) = dictionary {
-            let _abs_path = get_abs_path(&dict);
+    pub fn initialize(&mut self, dictionary: Option<&str>) -> Result<(), std::io::Error> {
+        let mut abs_path = if let Some(dict) = dictionary {
+            let mut _abs_path = get_abs_path(&dict);
             if self.dictionary == Some(_abs_path.clone()) && self.initialized {
-                return;
+                return Ok(());
             } else {
                 self.dictionary = Some(_abs_path.clone());
-                self.initialized = true;
+                self.initialized = false;
             }
             Some(_abs_path)
         } else {
-            self.dictionary.clone()
+            None
+        };
+        // let abs_path = if dictionary.is_some() {
+        //     let _abs_path = get_abs_path(dictionary.unwrap());
+        //     if self.dictionary == Some(_abs_path) && self.initialized {
+        //         return;
+        //     } else {
+        //         self.dictionary = Some(_abs_path);
+        //         self.initialized = false;
+        //     }
+        // } else {
+
+        // };
+
+
+        // with self.lock
+        if self.initialized {
+            return Ok(());
+        }
+
+        // default_logger
+        // time()
+        let cache_file = if self.cache_file.is_some() {
+            self.cache_file.clone().unwrap()
+        } else if abs_path.is_none() {
+            "jieba.cache".to_string()
+        } else {
+            // moved?
+            let _abs_path = abs_path.clone().unwrap();
+            format!("jieba.u{:x}.cache", md5::compute(&_abs_path))
         };
 
-        println!("abs_path = {:?}", &abs_path);
-        let contents = self.get_dict_file().unwrap();
-        let (freq, total) = self.gen_pfdict(&contents);
-        // println!("{:?}", &freq);
-        self.freq = freq;
-        self.total = total;
+        let mut tmpdir = env::temp_dir();
+        tmpdir.push(&cache_file);
+        // println!("cache: {:?}", &tmpdir);
+        let mut load_from_cache_fail = true;
+        if metadata(&tmpdir)?.is_file() &&
+            (abs_path.is_none() ||
+                metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
+        {
+            let cf = File::open(&tmpdir);
+            println!("cache: {:?}", &tmpdir);
+            match cf {
+                Ok(mut t) => {
+                    let mut contents = String::new();
+                    t.read_to_string(&mut contents)?;
+                    let (freq, total): (Map<String, u32>, u32) =
+                        serde_json::from_str(&contents).unwrap();
+                    load_from_cache_fail = false;
+                    println!("read from cache: {:?}", &tmpdir);
+                }
+                Err(e) => {
+                    load_from_cache_fail = true;
+                    println!("read from cache failed");
+                }
+            }
+        }
+
+        if load_from_cache_fail {
+            // println!("abs_path = {:?}", &abs_path);
+            let contents = self.get_dict_file().unwrap();
+            let (freq, total) = self.gen_pfdict(&contents);
+            // println!("{:?}", &freq);
+            self.freq = freq;
+            self.total = total;
+
+            let mut fd = File::create(&tmpdir);
+            println!("tmpdir: {:?}", &tmpdir);
+            match fd {
+                Ok(mut t) => {
+                    let data = (self.freq.clone(), self.total.clone());
+                    let contents = serde_json::to_string(&data).unwrap();
+                    t.write_all(&contents.into_bytes());
+                    println!("dump to cache: {:?}", &tmpdir);
+                }
+                Err(e) => {
+                    println!("dump to cache failed");
+                }
+            }
+        }
+
         self.initialized = true;
+
+
+        Ok(())
     }
 
     pub fn check_initialized(&mut self) {
@@ -236,7 +326,7 @@ impl Tokenizer {
             let l_word = char_slice(sentence, x, y);
             if y - x == 1 {
                 buf.push_str(l_word);
-                // println!("buf = {}", &buf);
+            // println!("buf = {}", &buf);
             } else {
                 if buf.len() > 0 {
                     if buf.len() == 1 {
@@ -424,7 +514,21 @@ impl Tokenizer {
     }
 }
 
+pub fn get_freq(k: &str, d: Option<u32>) -> Option<u32> {
+    if let Some(freq) = DT.lock().unwrap().freq.get(k) {
+        Some(*freq)
+    } else {
+        d
+    }
+}
 
+pub fn cut(sentence: &str, cut_all: bool, hmm: bool) -> Vec<String> {
+    DT.lock().unwrap().cut(sentence, cut_all, hmm)
+}
+
+pub fn cut_for_search(sentence: &str, hmm: bool) -> Vec<String> {
+    DT.lock().unwrap().cut_for_search(sentence, hmm)
+}
 
 pub fn enable_parallel(processnum: usize) {
     let processnum = if processnum == 0 {
