@@ -20,6 +20,7 @@ use std::env;
 use std::error::Error;
 use std::io::prelude::*;
 use std::sync::{Arc, Mutex};
+use std::time;
 // use std::path::Path;
 
 // use std::path;
@@ -29,6 +30,7 @@ use compact::{char_slice, SplitCaptures, SplitState};
 
 const DEFAULT_DICT_NAME: &'static str = "dict.txt";
 const DEFAULT_DICT: Option<&str> = None;
+pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 
 lazy_static! {
@@ -150,7 +152,7 @@ impl Tokenizer {
         }
 
         // default_logger
-        // time()
+        let t1 = time::Instant::now();
         let cache_file = if self.cache_file.is_some() {
             self.cache_file.clone().unwrap()
         } else if abs_path.is_none() {
@@ -165,9 +167,9 @@ impl Tokenizer {
         tmpdir.push(&cache_file);
         // println!("cache: {:?}", &tmpdir);
         let mut load_from_cache_fail = true;
-        if metadata(&tmpdir)?.is_file() &&
-            (abs_path.is_none() ||
-                metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
+        if metadata(&tmpdir)?.is_file()
+            && (abs_path.is_none()
+                || metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
         {
             let cf = File::open(&tmpdir);
             println!("cache: {:?}", &tmpdir);
@@ -211,7 +213,7 @@ impl Tokenizer {
         }
 
         self.initialized = true;
-
+        println!("Loading model cost {:?} seconds", time::Instant::now() - t1);
 
         Ok(())
     }
@@ -237,9 +239,9 @@ impl Tokenizer {
                 .iter()
                 .map(|&x| {
                     let logfreq = if let Some(&freq) = self.freq.get(
-                        &sentence[sentence.char_indices().nth(idx).unwrap().0..
-                                      sentence.char_indices().nth(x).unwrap().0 +
-                                          sentence.char_indices().nth(x).unwrap().1.len_utf8()],
+                        &sentence[sentence.char_indices().nth(idx).unwrap().0
+                                      ..sentence.char_indices().nth(x).unwrap().0
+                                          + sentence.char_indices().nth(x).unwrap().1.len_utf8()],
                     ) {
                         (freq as f64).ln()
                     } else {
@@ -277,9 +279,9 @@ impl Tokenizer {
                 }
                 i += 1;
                 let _i = if i < n { i } else { n - 1 };
-                frag = sentence[sentence.char_indices().nth(k).unwrap().0..
-                                    sentence.char_indices().nth(_i).unwrap().0 +
-                                        sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
+                frag = sentence[sentence.char_indices().nth(k).unwrap().0
+                                    ..sentence.char_indices().nth(_i).unwrap().0
+                                        + sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
                     .to_string();
             }
             if tmplist.is_empty() {
