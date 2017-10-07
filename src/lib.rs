@@ -119,7 +119,7 @@ impl Tokenizer {
     }
 
     pub fn initialize(&mut self, dictionary: Option<&str>) -> Result<(), std::io::Error> {
-        let mut abs_path = if let Some(dict) = dictionary {
+        let abs_path = if let Some(dict) = dictionary {
             let mut _abs_path = get_abs_path(&dict);
             if self.dictionary == Some(_abs_path.clone()) && self.initialized {
                 return Ok(());
@@ -169,29 +169,65 @@ impl Tokenizer {
         tmpdir.push(&cache_file);
         // println!("cache: {:?}", &tmpdir);
         let mut load_from_cache_fail = true;
-        if metadata(&tmpdir)?.is_file()
-            && (abs_path.is_none()
-                || metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
-        {
-            let cf = File::open(&tmpdir);
-            println!("cache");
-            match cf {
-                Ok(mut t) => {
-                    let mut contents = String::new();
-                    t.read_to_string(&mut contents)?;
-                    let (freq, total): (Map<String, u32>, u32) =
-                        serde_json::from_str(&contents).unwrap();
-                    self.freq = freq;
-                    self.total = total;
-                    load_from_cache_fail = false;
-                    println!("read from cache: {:?}", &tmpdir);
+
+        // println!("is file {}", metadata(&tmpdir)?.is_file());
+
+        if let Ok(m) = metadata(&tmpdir) {
+            if m.is_file() {
+                if abs_path.is_some() {
+                    if let Ok(abs) = metadata(&(abs_path.unwrap())) {
+                        if m.modified()? < abs.modified()? {}
+                    }
                 }
-                Err(e) => {
-                    load_from_cache_fail = true;
-                    println!("read from cache failed");
+
+                println!("cache");
+                let mut cf = File::open(&tmpdir);
+
+                match cf {
+                    Ok(mut t) => {
+                        let mut contents = String::new();
+                        t.read_to_string(&mut contents)?;
+                        let (freq, total): (Map<String, u32>, u32) =
+                            serde_json::from_str(&contents).unwrap();
+                        self.freq = freq;
+                        self.total = total;
+                        load_from_cache_fail = false;
+                        println!("read from cache: {:?}", &tmpdir);
+                    }
+                    Err(e) => {
+                        load_from_cache_fail = true;
+                        println!("read from cache failed");
+                    }
                 }
             }
         }
+
+
+
+        // if metadata(&tmpdir)?.is_file()
+        //     && (abs_path.is_none()
+        //         || metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
+        // {
+        //     println!("cache");
+        //     let mut cf = File::open(&tmpdir);
+
+        //     match cf {
+        //         Ok(mut t) => {
+        //             let mut contents = String::new();
+        //             t.read_to_string(&mut contents)?;
+        //             let (freq, total): (Map<String, u32>, u32) =
+        //                 serde_json::from_str(&contents).unwrap();
+        //             self.freq = freq;
+        //             self.total = total;
+        //             load_from_cache_fail = false;
+        //             println!("read from cache: {:?}", &tmpdir);
+        //         }
+        //         Err(e) => {
+        //             load_from_cache_fail = true;
+        //             println!("read from cache failed");
+        //         }
+        //     }
+        // }
 
 
         // println!("bool {}", load_from_cache_fail);
@@ -209,7 +245,7 @@ impl Tokenizer {
                 Ok(mut t) => {
                     let data = (self.freq.clone(), self.total.clone());
                     let contents = serde_json::to_string(&data).unwrap();
-                    t.write_all(&contents.into_bytes());
+                    t.write_all(&contents.into_bytes())?;
                     println!("dump to cache: {:?}", &tmpdir);
                 }
                 Err(e) => {
@@ -226,7 +262,7 @@ impl Tokenizer {
 
     pub fn check_initialized(&mut self) {
         if !self.initialized {
-            self.initialize(None);
+            self.initialize(None).expect("fail to initialize");
         }
     }
 
