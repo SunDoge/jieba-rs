@@ -105,41 +105,25 @@ fn main() {
 }
 
 fn test() {
-// let mut p = HashMap::new();
-    // p.insert('\u{4E00}', vec![('B', "'nr'")]);
-    // p.insert('\u{4E01}', vec![('B', "'nr'"), ('B', "nr")]);
-    // print!("{:?}", p);
-    // jiebars::posseg::char_state_tap::P(&mut p)
-    // let p = jiebars::posseg::char_state_tap::p();
-    // println!("{:?}", p);
+    println!("{}", "=".repeat(40));
+    println!("1. 分词");
+    println!("{}", "-".repeat(40));
 
-    // let s = "这是一个测试";
-    // println!("words: {}", s);
-    // println!("len = {}", s.chars().nth(0).unwrap() );
-    // println!("s[0] = {}", s.chars().nth(0));
-    // use std::env;
-    // let mut path = env::current_dir().unwrap();
-    // path.push("src");
-    // path.push("dict.txt");
-    // let path = "dick";
-    // let path = jiebars::get_abs_path(path);
-    // println!("{}", jiebars::get_abs_path(path));
-    let mut tk = jiebars::Tokenizer::new(None);
-    let sentence = "我来到北京清华大学";
-    println!("{:?}", tk.cut(&sentence, true, true));
-    // println!("{:?}", jiebars::cut(&sentence, false, true));
-    // println!("{:?}", tk.cut("如果放到post中将出错。", false, false));
-    // println!("{:?}", tk.cut_for_search("小明硕士毕业于中国科学院计算所，后在日本京都大学深造", true));
-    // println!("{:?}", *jiebars::finalseg::prob_start::P);
-    // println!("{:?}", *jiebars::finalseg::prob_start::P);
-    // println!("{:?}", tk.get_dag(&sentence));
-    // let contents = tk.get_dict_file().unwrap();
-    // let (freq, total) = tk.gen_pfdict(&contents);
-    // println!("{:?}: {}", freq, total);
-    // jiebars::enable_parallel(0);
-    // let n = 5;
-    // for i in (-1..n - 1).rev() {
-    //     println!("{}", &i);
-    // }
+    let seg_list = jiebars::cut("我来到北京清华大学", true, true);
+    println!("Full Mode: {}", &seg_list.join("/ "));
+
+    let seg_list = jiebars::cut("我来到北京清华大学", false, true);
+    println!("Default Mode: {}", &seg_list.join("/ "));
+
+    let seg_list = jiebars::cut("他来到了网易杭研大厦", false, true);
+    println!("{}", &seg_list.join(", "));
+
+    let seg_list = jiebars::cut_for_search("小明硕士毕业于中国科学院计算所，后在日本京都大学深造", true);
+    println!("{}", &seg_list.join(", "));
+
+
+    println!("{}", "=".repeat(40));
+    println!("2. 添加自定义词典/调整词典");
+    println!("{}", "-".repeat(40));
 
 }
