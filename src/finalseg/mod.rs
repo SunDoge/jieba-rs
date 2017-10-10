@@ -32,6 +32,9 @@ lazy_static! {
         m
     };
     // static ref FORCE_SPLIT_WORDS:
+
+    static ref RE_HAN: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap();
+    static ref RE_SKIP: Regex = Regex::new(r"([a-zA-Z0-9]+(?:\.\d+)?%?)").unwrap();
 }
 
 // lazy_static! {
@@ -104,7 +107,7 @@ fn viterbi(
 }
 
 fn __cut(sentence: &str) -> Vec<String> {
-    let (prob, pos_list) = viterbi(
+    let (_prob, pos_list) = viterbi(
         sentence,
         "BMES",
         &*prob_start::P,
@@ -138,14 +141,15 @@ fn __cut(sentence: &str) -> Vec<String> {
 }
 
 pub fn cut(sentence: &str) -> Vec<String> {
-    let re_han = Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap();
-    let re_skip = Regex::new(r"([a-zA-Z0-9]+(?:\.\d+)?%?)").unwrap();
+    // let re_han = Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap();
+    // let re_skip = Regex::new(r"([a-zA-Z0-9]+(?:\.\d+)?%?)").unwrap();
+    let (re_han, re_skip) = (&*RE_HAN, &*RE_SKIP);
     let blocks = SplitCaptures::new(&re_han, &sentence);
     let mut segs: Vec<String> = Vec::new();
     for blk in blocks {
         match blk {
             SplitState::Captured(caps) => {
-                println!("{:?}", caps);
+                // println!("{:?}", caps);
                 for word in __cut(&caps[0]) {
                     // TODO: Force split words
                     segs.push(word.to_string());

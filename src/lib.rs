@@ -31,12 +31,24 @@ use compact::{char_slice, SplitCaptures, SplitState};
 const DEFAULT_DICT_NAME: &'static str = "dict.txt";
 const DEFAULT_DICT: Option<&str> = None;
 pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const AUTHORS: &'static str = env!("CARGO_PKG_AUTHORS");
 
 
 lazy_static! {
-    static ref DT: Mutex<Tokenizer> =
-        Mutex::new(Tokenizer::new(DEFAULT_DICT))
-    ;
+    static ref DT: Mutex<Tokenizer> = Mutex::new(Tokenizer::new(DEFAULT_DICT));
+
+    static ref RE_HAN_CUT_ALL: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap();
+
+    static ref RE_SKIP_CUT_ALL: Regex = Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap();
+
+    static ref RE_HAN_DEFAULT: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap();
+
+    static ref RE_SKIP_DEFAULT: Regex = Regex::new(r"(\r\n|\s)").unwrap();
+
+    static ref DICT_WRITING: Map<String, Mutex<()>> = {
+        let mut m: Map<String, Mutex<()>> = Map::new();
+        m
+    };
 }
 
 
@@ -183,7 +195,7 @@ impl Tokenizer {
                 }
 
                 println!("cache");
-                let mut cf = File::open(&tmpdir);
+                let cf = File::open(&tmpdir);
 
                 match cf {
                     Ok(mut t) => {
@@ -241,7 +253,7 @@ impl Tokenizer {
             self.freq = freq;
             self.total = total;
 
-            let mut fd = File::create(&tmpdir);
+            let fd = File::create(&tmpdir);
             println!("tmpdir: {:?}", &tmpdir);
             match fd {
                 Ok(mut t) => {
@@ -257,7 +269,11 @@ impl Tokenizer {
         }
 
         self.initialized = true;
-        println!("Loading model cost {:?} seconds", time::Instant::now() - t1);
+        println!(
+            "Loading model cost {}.{} seconds",
+            t1.elapsed().as_secs(),
+            t1.elapsed().subsec_nanos()
+        );
 
         Ok(())
     }
@@ -323,10 +339,11 @@ impl Tokenizer {
                 }
                 i += 1;
                 let _i = if i < n { i } else { n - 1 };
-                frag = sentence[sentence.char_indices().nth(k).unwrap().0
-                                    ..sentence.char_indices().nth(_i).unwrap().0
-                                        + sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
-                    .to_string();
+                // frag = sentence[sentence.char_indices().nth(k).unwrap().0
+                //                     ..sentence.char_indices().nth(_i).unwrap().0
+                //                         + sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
+                //     .to_string();
+                frag = char_slice(sentence, k, _i+1).to_string();
             }
             if tmplist.is_empty() {
                 tmplist.push(k);
@@ -465,15 +482,17 @@ impl Tokenizer {
     pub fn cut(&mut self, sentence: &str, cut_all: bool, hmm: bool) -> Vec<String> {
         // sentence = strdecode(&sentence);
 
-        let (re_han, re_skip) = if cut_all {
+        let (re_han, re_skip)= if cut_all {
             (
-                Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
-                Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap(),
+                // Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap(),
+                // Regex::new(r"[^a-zA-Z0-9+#\n]").unwrap(),
+                &*RE_HAN_CUT_ALL, &*RE_SKIP_CUT_ALL
             )
         } else {
             (
-                Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
-                Regex::new(r"(\r\n|\s)").unwrap(),
+                // Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap(),
+                // Regex::new(r"(\r\n|\s)").unwrap(),
+                &*RE_HAN_DEFAULT, &*RE_SKIP_DEFAULT
             )
         };
 
@@ -496,7 +515,7 @@ impl Tokenizer {
         for blk in blocks {
             match blk {
                 SplitState::Captured(caps) => {
-                    println!("captured: {:?}", &caps[0]);
+                    // println!("captured: {:?}", &caps[0]);
                     for word in cut_block(self, &caps[0]) {
                         // println!("{}", &word);
                         segs.push(word.to_string());
@@ -558,7 +577,51 @@ impl Tokenizer {
 
         segs
     }
+
+
+    /// Load personalized dict to improve detect rate.
+    ///
+    /// Parameter:
+    /// - f : A plain text file contains words and their ocurrences.
+    ///       Can be a file-like object, or the path of the dictionary file,
+    ///       whose encoding must be utf-8.
+    ///
+    /// Structure of dict file:
+    /// word1 freq1 word_type1
+    /// word2 freq2 word_type2
+    /// ...
+    /// Word type may be ignored
+    pub fn load_user_dict(&mut self, f_name: &str) -> Result<(), std::io::Error> {
+        self.check_initialized();
+        let mut contents = String::new();
+        File::open(&f_name)?.read_to_string(&mut contents)?;
+
+        for (lineno, ln) in contents.lines().enumerate() {
+            let line = ln.trim();
+
+            if line.chars().count() == 0 {
+                continue;
+            }
+
+            let re_userdict = Regex::new(r"^(.+?)( [0-9]+)?( [a-z]+)?$").unwrap();
+            let res = re_userdict.captures(&line);
+            println!("{:?}", res);
+        }
+
+
+        Ok(())
+    }
+
+    pub fn add_word(&mut self, word: &str, freq: u32, tag: &str) {
+        self.check_initialized();
+    }
+
+    pub fn del_word(&mut self, word: &str) {
+        self.add_word(&word, 0, "");
+    }
 }
+
+
 
 pub fn get_freq(k: &str, d: Option<u32>) -> Option<u32> {
     if let Some(freq) = DT.lock().unwrap().freq.get(k) {

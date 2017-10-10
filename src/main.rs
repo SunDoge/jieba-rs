@@ -10,7 +10,7 @@ fn main() {
     
     // let matches = App::new("jiebars")
     //     .version(jiebars::VERSION)
-    //     .author("SunDoge")
+    //     .author(jiebars::AUTHORS)
     //     .about("Jieba Command line interface")
     //     .arg(
     //         Arg::with_name("delimiter")
@@ -126,4 +126,5 @@ fn test() {
     println!("2. 添加自定义词典/调整词典");
     println!("{}", "-".repeat(40));
 
+    println!("{}", jiebars::cut("如果放到post中将出错。", false, false).join("/"));
 }

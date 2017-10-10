@@ -56,7 +56,7 @@ impl<'r, 't> Iterator for SplitCaptures<'r, 't> {
 //     seg: char,
 // }
 
-pub fn strdecode(sentence: &str) {}
+// pub fn strdecode(sentence: &str) {}
 
 // pub fn resolve_filename() {}
 
