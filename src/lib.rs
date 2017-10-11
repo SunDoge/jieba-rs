@@ -168,11 +168,11 @@ impl Tokenizer {
         let cache_file = if self.cache_file.is_some() {
             self.cache_file.clone().unwrap()
         } else if abs_path.is_none() {
-            "jieba.cache".to_string()
+            "jiebars.cache".to_string()
         } else {
             // moved?
             let _abs_path = abs_path.clone().unwrap();
-            format!("jieba.u{:x}.cache", md5::compute(&_abs_path))
+            format!("jiebars.u{:x}.cache", md5::compute(&_abs_path))
         };
 
         let mut tmpdir = env::temp_dir();
