@@ -44,11 +44,7 @@ lazy_static! {
     static ref RE_HAN_DEFAULT: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap();
 
     static ref RE_SKIP_DEFAULT: Regex = Regex::new(r"(\r\n|\s)").unwrap();
-
-    static ref DICT_WRITING: Map<String, Mutex<()>> = {
-        let mut m: Map<String, Mutex<()>> = Map::new();
-        m
-    };
+    
 }
 
 
@@ -298,11 +294,7 @@ impl Tokenizer {
             let xs: Vec<(f64, usize)> = dag[&idx]
                 .iter()
                 .map(|&x| {
-                    let logfreq = if let Some(&freq) = self.freq.get(
-                        &sentence[sentence.char_indices().nth(idx).unwrap().0
-                                      ..sentence.char_indices().nth(x).unwrap().0
-                                          + sentence.char_indices().nth(x).unwrap().1.len_utf8()],
-                    ) {
+                    let logfreq = if let Some(&freq) = self.freq.get(char_slice(&sentence, idx, x + 1)) {
                         (freq as f64).ln()
                     } else {
                         0.0
