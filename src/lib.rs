@@ -23,6 +23,7 @@ use std::io::prelude::*;
 use std::sync::{Arc};
 use parking_lot::{ReentrantMutex, Mutex, RwLock};
 use std::time;
+use std::cmp;
 // use std::path::Path;
 
 // use std::path;
@@ -55,6 +56,10 @@ lazy_static! {
     
 }
 
+pub enum Mode {
+    Default,
+    Search,
+}
 
 pub fn get_abs_path(path: &str) -> String {
     let mut cwd = env::current_dir().unwrap();
@@ -70,6 +75,7 @@ pub struct Tokenizer {
     dictionary: Option<String>,
     freq: Map<String, u32>,
     cache_file: Option<String>,
+    user_word_tag_tab: Map<String, String>
 }
 
 impl Tokenizer {
@@ -81,7 +87,8 @@ impl Tokenizer {
                 dictionary: Some(get_abs_path(dict)),
                 freq: Map::new(),
                 cache_file: None,
-                lock: ReentrantMutex::new(())
+                lock: ReentrantMutex::new(()),
+                user_word_tag_tab: Map::new()
             },
             None => Tokenizer {
                 total: 0,
@@ -89,7 +96,8 @@ impl Tokenizer {
                 dictionary: None,
                 freq: Map::new(),
                 cache_file: None,
-                lock: ReentrantMutex::new(())
+                lock: ReentrantMutex::new(()),
+                user_word_tag_tab: Map::new()
             },
         }
     }
@@ -139,7 +147,7 @@ impl Tokenizer {
     }
 
     pub fn initialize(&mut self, dictionary: Option<&str>) {
-        let mut abs_path = if let Some(dict) = dictionary {
+        let abs_path = if let Some(dict) = dictionary {
             let mut _abs_path = get_abs_path(&dict);
             if self.dictionary == Some(_abs_path.clone()) && self.initialized {
                 return;
@@ -168,12 +176,12 @@ impl Tokenizer {
 
         // with self.lock
         {
-            *self.lock.lock();
+            let _lock = *self.lock.lock();
                 
                 // with DICT_WIRTING[abs_path]
-                // if let Some(lock) = DICT_WRITING.read().get(&abs_path.clone().unwrap_or("".to_string())) {
-                //     *lock.lock()
-                // }
+                if let Some(lock) = DICT_WRITING.read().get(&abs_path.clone().unwrap_or("None".to_string())) {
+                    let _lock = *lock.lock();
+                }
 
             if self.initialized {
                 return;
@@ -234,31 +242,46 @@ impl Tokenizer {
 
             // println!("bool {}", load_from_cache_fail);
             if load_from_cache_fail {
-                
-                    
-                
 
+                // wlock = DICT_WRITING.get(abs_path, threading.RLock())
+                // DICT_WRITING[abs_path] = wlock
+                if DICT_WRITING.read().get(&abs_path.clone().unwrap_or("None".to_string())).is_none() {
+                    DICT_WRITING.write().insert(abs_path.clone().unwrap_or("None".to_string()), ReentrantMutex::new(()));
+                }
 
-                // println!("abs_path = {:?}", &abs_path);
-                let contents = self.get_dict_file().unwrap();
-                let (freq, total) = self.gen_pfdict(&contents);
-                // println!("{:?}", &freq);
-                self.freq = freq;
-                self.total = total;
+                // with wlock   
+                {
+                    let mut _lock = DICT_WRITING.read();
+                    let _wlock = _lock.get(&abs_path.clone().unwrap_or("None".to_string())).unwrap().lock();
+                    // println!("abs_path = {:?}", &abs_path);
+                    let contents = self.get_dict_file().unwrap();
+                    let (freq, total) = self.gen_pfdict(&contents);
+                    // println!("{:?}", &freq);
+                    self.freq = freq;
+                    self.total = total;
 
-                let fd = File::create(&tmpdir);
-                println!("tmpdir: {:?}", &tmpdir);
-                match fd {
-                    Ok(mut t) => {
-                        let data = (self.freq.clone(), self.total.clone());
-                        let contents = serde_json::to_string(&data).unwrap();
-                        t.write_all(&contents.into_bytes()).unwrap();
-                        println!("dump to cache: {:?}", &tmpdir);
-                    }
-                    Err(e) => {
-                        println!("{}", e.to_string());
+                    let fd = File::create(&tmpdir);
+                    println!("tmpdir: {:?}", &tmpdir);
+                    match fd {
+                        Ok(mut t) => {
+                            let data = (self.freq.clone(), self.total.clone());
+                            let contents = serde_json::to_string(&data).unwrap();
+                            t.write_all(&contents.into_bytes()).unwrap();
+                            println!("dump to cache: {:?}", &tmpdir);
+                        }
+                        Err(e) => {
+                            println!("{}", e.to_string());
+                        }
                     }
                 }
+
+                // del DICT_WRITING[abs_path]
+                if DICT_WRITING.read().get(&abs_path.clone().unwrap_or("None".to_string())).is_none() {
+                    DICT_WRITING.write().remove(&abs_path.clone().unwrap_or("None".to_string()));
+                }
+
+
+                
             }
 
             self.initialized = true;
@@ -584,24 +607,156 @@ impl Tokenizer {
         for (lineno, ln) in contents.lines().enumerate() {
             let line = ln.trim();
 
+            let line = line.trim_left_matches("\u{feff}");
+
             if line.chars().count() == 0 {
                 continue;
             }
 
-            let res = RE_USERDICT.captures(&line);
-            println!("{:?}", res);
+            let res = RE_USERDICT.captures(&line).unwrap();
+            // println!("{:?}", &res);
+            let (word, freq, tag) = (&res.get(1), &res.get(2), &res.get(3));
+            // let tag = &res[1];
+            let freq: Option<u32> = if freq.is_some() {
+                Some(freq.unwrap().as_str().trim().parse::<u32>().unwrap())
+            } else {
+                None
+            };
+
+            let tag: Option<&str> = if tag.is_some() {
+                Some(tag.unwrap().as_str().trim())
+            } else {
+                None
+            };
+
+            self.add_word(word.unwrap().as_str(), &freq, &tag);
+            
         }
 
 
         Ok(())
     }
 
-    pub fn add_word(&mut self, word: &str, freq: u32, tag: &str) {
+    pub fn add_word(&mut self, word: &str, freq: &Option<u32>, tag: &Option<&str>) {
         self.check_initialized();
+        let freq = if freq.is_some() {
+            freq.unwrap()
+        } else {
+            self.suggest_freq(&vec![word], false)
+        };
+        self.freq.insert(word.to_string(), freq);
+        self.total += freq;
+        if let Some(t) = *tag {
+            self.user_word_tag_tab.insert(word.to_string(), t.to_string());
+        }
+        for ch in 0..word.chars().count() {
+            let wfrag = char_slice(&word, 0, ch + 1);
+            if !self.freq.contains_key(wfrag) {
+                self.freq.insert(wfrag.to_string(), 0);
+            }
+        }
+        if freq == 0 {
+            finalseg::add_force_split(&word);
+        }
     }
 
     pub fn del_word(&mut self, word: &str) {
-        self.add_word(&word, 0, "");
+        self.add_word(&word, &Some(0), &None);
+    }
+
+
+    /// Suggest word frequency to force the characters in a word to be
+    /// joined or splitted.
+    /// 
+    /// Parameter:
+    /// - segment : The segments that the word is expected to be cut into,
+    ///             If the word should be treated as a whole, use a str.
+    /// - tune : If True, tune the word frequency.
+    /// 
+    /// Note that HMM may affect the final result. If the result doesn't change,
+    /// set HMM=False.
+    pub fn suggest_freq(&mut self, segment: &Vec<&str>, tune: bool) -> u32 {
+        self.check_initialized();
+        println!("suggest freq");
+        let ftotal: f64 = self.total as f64;
+        let mut _freq = 1.0;
+        let mut freq = 0;
+        let word = if segment.len() == 1 {
+            let _word = segment[0];
+            for seg in self.cut(&_word, false, false) {
+                _freq *= *self.freq.get(&seg).unwrap_or(&1) as f64 / ftotal;
+            }
+            freq = cmp::max( (_freq * (self.total as f64)) as u32 + 1, *self.freq.get(_word).unwrap_or(&1));
+            _word.to_string()
+        } else {
+            println!("segments");
+            let _word = segment.join("");
+            for seg in segment {
+                _freq *= *self.freq.get(*seg).unwrap_or(&1) as f64 / ftotal;
+            }
+            freq = cmp::min( (_freq * (self.total as f64)) as u32 , *self.freq.get(&_word).unwrap_or(&0));
+            _word
+        };
+
+        if tune {
+            println!("tune true");
+            self.add_word(&word, &Some(freq), &None);
+        }
+
+        freq
+    }
+
+    pub fn tokenize(&mut self, sentence: &str, mode: Mode, hmm: bool) -> Vec<(String, usize, usize)> {
+        let mut start: usize = 0;
+        let mut res: Vec<(String, usize, usize)> = Vec::new();
+        match mode {
+            Mode::Default => {
+                for w in self.cut(sentence, false, hmm) {
+                    let width = w.chars().count();
+                    res.push((w.to_string(), start, start + width));
+                    start += width;
+                }
+            },
+            Mode::Search => {
+                for w in self.cut(sentence, false, hmm) {
+                    let width = w.chars().count();
+                    if width > 2 {
+                        for i in 0..width-1 {
+                            let gram2 = char_slice(&w, i, i + 2);
+                            if let Some(g) = self.freq.get(gram2) {
+                                res.push((g.to_string(), start + i, start + i + 2));
+                            }
+                        }
+                    }
+
+                    if width > 3 {
+                        for i in 0..width-2 {
+                            let gram3= char_slice(&w, i, i + 3);
+                            if let Some(g) = self.freq.get(gram3) {
+                                res.push((g.to_string(), start + i, start + i + 3));
+                            }
+                        }
+                    }
+
+                    res.push((w.to_string(), start, start + width));
+                    start += width;
+                }
+            }
+        }
+
+        res
+    }
+
+    pub fn set_dictionary(&mut self, dictionary_path: &str) {
+        let _lock = self.lock.lock();
+        let abs_path = get_abs_path(dictionary_path);
+        if !(metadata(&abs_path).is_ok() && metadata(&abs_path).unwrap().is_file()) {
+            println!("jiebars: file does not exist: {}", &abs_path);
+            panic!("set_dictionary");
+        }
+
+        self.dictionary = Some(abs_path);
+        self.initialized = false;
     }
 }
 
@@ -619,8 +774,16 @@ pub fn cut(sentence: &str, cut_all: bool, hmm: bool) -> Vec<String> {
     DT.lock().cut(sentence, cut_all, hmm)
 }
 
+pub fn add_word(word: &str, freq: &Option<u32>, tag: &Option<&str>) {
+    DT.lock().add_word(word, freq, tag);
+}
+
 pub fn cut_for_search(sentence: &str, hmm: bool) -> Vec<String> {
     DT.lock().cut_for_search(sentence, hmm)
+}
+
+pub fn suggest_freq(segment: &Vec<&str>, tune: bool) -> u32 {
+    DT.lock().suggest_freq(segment, tune)
 }
 
 pub fn enable_parallel(processnum: usize) {

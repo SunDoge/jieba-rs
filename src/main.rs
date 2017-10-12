@@ -127,4 +127,7 @@ fn test() {
     println!("{}", "-".repeat(40));
 
     println!("{}", jiebars::cut("如果放到post中将出错。", false, false).join("/"));
+
+    println!("{}", jiebars::suggest_freq(&vec!["中", "将"], true));
+    // 494
 }

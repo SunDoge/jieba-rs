@@ -1,4 +1,5 @@
 extern crate regex;
+extern crate parking_lot;
 
 // #[macro_use]
 // extern crate serde_derive;
@@ -14,7 +15,10 @@ pub mod prob_emit;
 
 use regex::Regex;
 use std::collections::HashMap as Map;
+use std::collections::HashSet as Set;
+use parking_lot::Mutex;
 use super::compact::{char_slice, SplitCaptures, SplitState};
+
 
 pub type ProbEmit = Map<char, Map<char, f64>>;
 pub type ProbStart = Map<char, f64>;
@@ -35,6 +39,7 @@ lazy_static! {
 
     static ref RE_HAN: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap();
     static ref RE_SKIP: Regex = Regex::new(r"([a-zA-Z0-9]+(?:\.\d+)?%?)").unwrap();
+    static ref FORCE_SPLIT_WORDS: Mutex<Set<String>> = Mutex::new(Set::new());
 }
 
 // lazy_static! {
@@ -168,4 +173,8 @@ pub fn cut(sentence: &str) -> Vec<String> {
     }
     // println!("segs in cut = {:?}", segs);
     segs
+}
+
+pub fn add_force_split(word: &str) {
+    FORCE_SPLIT_WORDS.lock().insert(word.to_string());
 }
