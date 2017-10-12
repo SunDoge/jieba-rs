@@ -677,29 +677,30 @@ impl Tokenizer {
     /// set HMM=False.
     pub fn suggest_freq(&mut self, segment: &Vec<&str>, tune: bool) -> u32 {
         self.check_initialized();
-        println!("suggest freq");
+        // println!("suggest freq");
         let ftotal: f64 = self.total as f64;
-        let mut _freq = 1.0;
-        let mut freq = 0;
-        let word = if segment.len() == 1 {
+        let mut ffreq = 1.0;
+        
+        let (word, freq)= if segment.len() == 1 {
             let _word = segment[0];
             for seg in self.cut(&_word, false, false) {
-                _freq *= *self.freq.get(&seg).unwrap_or(&1) as f64 / ftotal;
+                ffreq *= *self.freq.get(&seg).unwrap_or(&1) as f64 / ftotal;
             }
-            freq = cmp::max( (_freq * (self.total as f64)) as u32 + 1, *self.freq.get(_word).unwrap_or(&1));
-            _word.to_string()
+            let _freq = cmp::max( (ffreq * (self.total as f64)) as u32 + 1, *self.freq.get(_word).unwrap_or(&1));
+            (_word.to_string(), _freq)
         } else {
-            println!("segments");
+            // println!("segments");
             let _word = segment.join("");
             for seg in segment {
-                _freq *= *self.freq.get(*seg).unwrap_or(&1) as f64 / ftotal;
+                ffreq *= *self.freq.get(*seg).unwrap_or(&1) as f64 / ftotal;
             }
-            freq = cmp::min( (_freq * (self.total as f64)) as u32 , *self.freq.get(&_word).unwrap_or(&0));
-            _word
+            let _freq = cmp::min( (ffreq * (self.total as f64)) as u32 , *self.freq.get(&_word).unwrap_or(&0));
+            (_word, _freq)
         };
 
         if tune {
-            println!("tune true");
+            // println!("tune true");
+            // no self original
             self.add_word(&word, &Some(freq), &None);
         }
 

@@ -12,5 +12,9 @@ jiebars
 - [x] cut dag no hmm
 - [x] cut for search
 - [x] cache
+- [x] add word
 - [ ] lock
 - [ ] multithread
+- [ ] TF-IDF
+- [ ] TextRank
+- [ ] posseg

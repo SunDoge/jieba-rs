@@ -130,4 +130,15 @@ fn test() {
 
     println!("{}", jiebars::suggest_freq(&vec!["中", "将"], true));
     // 494
+    println!("{}", jiebars::cut("如果放到post中将出错。", false, false).join("/"));
+
+    println!("{}", jiebars::cut("「台中」正确应该不会被切开", false, false).join("/"));
+
+    println!("{}", jiebars::suggest_freq(&vec!["台中"], true));
+
+    println!("{}", jiebars::cut("「台中」正确应该不会被切开", false, false).join("/"));
+
+    println!("{}", "=".repeat(40));
+    println!("3. 关键词提取");
+    println!("{}", "-".repeat(40));
 }
