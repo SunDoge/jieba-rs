@@ -210,25 +210,25 @@ impl Tokenizer {
 
             if (metadata(&tmpdir).is_ok() && metadata(&tmpdir).unwrap().is_file()) && (abs_path.is_none() || metadata(&abs_path.clone().unwrap()).is_ok() && metadata(&tmpdir).unwrap().modified().unwrap() > metadata(&abs_path.clone().unwrap()).unwrap().modified().unwrap()) {
 
-                    println!("cache");
-                    let cf = File::open(&tmpdir);
+                println!("cache");
+                let cf = File::open(&tmpdir);
 
-                    match cf {
-                        Ok(mut t) => {
-                            let mut contents = String::new();
-                            t.read_to_string(&mut contents).unwrap();
-                            let (freq, total): (Map<String, u32>, u32) =
-                                serde_json::from_str(&contents).unwrap();
-                            self.freq = freq;
-                            self.total = total;
-                            load_from_cache_fail = false;
-                            println!("read from cache: {:?}", &tmpdir);
-                        }
-                        Err(e) => {
-                            load_from_cache_fail = true;
-                            println!("{}", e.to_string());
-                        }
+                match cf {
+                    Ok(mut t) => {
+                        let mut contents = String::new();
+                        t.read_to_string(&mut contents).unwrap();
+                        let (freq, total): (Map<String, u32>, u32) =
+                            serde_json::from_str(&contents).unwrap();
+                        self.freq = freq;
+                        self.total = total;
+                        load_from_cache_fail = false;
+                        println!("read from cache: {:?}", &tmpdir);
                     }
+                    Err(e) => {
+                        load_from_cache_fail = true;
+                        println!("{}", e.to_string());
+                    }
+                }
                 
             }
 
@@ -329,10 +329,6 @@ impl Tokenizer {
                 }
                 i += 1;
                 let _i = if i < n { i } else { n - 1 };
-                // frag = sentence[sentence.char_indices().nth(k).unwrap().0
-                //                     ..sentence.char_indices().nth(_i).unwrap().0
-                //                         + sentence.char_indices().nth(_i).unwrap().1.len_utf8()]
-                //     .to_string();
                 frag = char_slice(sentence, k, _i+1).to_string();
             }
             if tmplist.is_empty() {
