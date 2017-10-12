@@ -385,6 +385,7 @@ impl Tokenizer {
 
     fn cut_dag(&mut self, sentence: &str) -> Vec<String> {
         let dag = self.get_dag(&sentence);
+        // println!("s: {}, dag: {:?}", &sentence, &dag );
         let mut route: Map<usize, (f64, usize)> = Map::new();
         self.calc(&sentence, &dag, &mut route);
         // println!("{:?}", &route);
@@ -400,8 +401,8 @@ impl Tokenizer {
                 buf.push_str(l_word);
             // println!("buf = {}", &buf);
             } else {
-                if buf.len() > 0 {
-                    if buf.len() == 1 {
+                if buf.chars().count() > 0 {
+                    if buf.chars().count() == 1 {
                         segs.push(buf.clone());
                         buf.clear();
                     } else {
@@ -428,8 +429,8 @@ impl Tokenizer {
             }
             x = y;
         }
-        if buf.len() > 0 {
-            if buf.len() == 1 {
+        if buf.chars().count() > 0 {
+            if buf.chars().count() == 1 {
                 segs.push(buf.clone());
             } else if !self.freq.contains_key(&buf) {
                 let recognized = finalseg::cut(&buf);
@@ -442,7 +443,7 @@ impl Tokenizer {
                 }
             }
         }
-
+        println!("{:?}", &segs);
         segs
         // vec!["fuck"]
     }
@@ -525,7 +526,7 @@ impl Tokenizer {
                 SplitState::Captured(caps) => {
                     // println!("captured: {:?}", &caps[0]);
                     for word in cut_block(self, &caps[0]) {
-                        // println!("{}", &word);
+                        // println!("p{}", &word);
                         segs.push(word.to_string());
                     }
                 }
@@ -536,7 +537,7 @@ impl Tokenizer {
                     for x in tmp {
                         match x {
                             SplitState::Captured(caps) => {
-                                // println!("{}", &caps[0]);
+                                // println!("{}", &caps[1]);
                                 segs.push(caps[0].to_string());
                             }
                             SplitState::Unmatched(t) => if !cut_all {
@@ -794,6 +795,14 @@ pub fn suggest_freq(segment: &Vec<&str>, tune: bool) -> u32 {
 
 pub fn tokenize(sentence: &str, mode: Mode, hmm: bool) -> Vec<(String, usize, usize)> {
     DT.lock().tokenize(sentence, mode, hmm)
+}
+
+pub fn load_user_dict(f_name: &str) {
+    DT.lock().load_user_dict(f_name).expect("fail to load user dict");
+}
+
+pub fn del_word(word: &str) {
+    DT.lock().del_word(word)
 }
 
 pub fn enable_parallel(processnum: usize) {

@@ -6,7 +6,8 @@ use clap::{App, Arg, SubCommand};
 
 fn main() {
 
-    test();
+    // test();
+    test_userdict();
     
     // let matches = App::new("jiebars")
     //     .version(jiebars::VERSION)
@@ -178,4 +179,19 @@ fn test() {
         println!("word {}\t\t start: {} \t\t end:{}", tk.0, tk.1, tk.2);
     }
     
+}
+
+fn test_userdict() {
+    jiebars::load_user_dict("tests/userdict.txt");
+
+    jiebars::add_word("石墨烯", &None, &None);
+    jiebars::add_word("凱特琳", &None, &None);
+    jiebars::del_word("自定义词");
+
+    // let test_sent = "李小福是创新办主任也是云计算方面的专家; 什么是八一双鹿\n例如我输入一个带“韩玉赏鉴”的标题，在自定义词库中也增加了此词为N类\n「台中」正確應該不會被切開。mac上可分出「石墨烯」；此時又可以分出來凱特琳了。";
+    let test_sent = "mac上可分出「石墨烯」；";
+
+    let words = jiebars::cut(test_sent, false, true);
+
+    println!("{}", words.join("/"));
 }
