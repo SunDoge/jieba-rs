@@ -2,6 +2,7 @@ extern crate md5;
 extern crate num_cpus;
 extern crate regex;
 extern crate serde_json;
+extern crate parking_lot;
 
 #[macro_use]
 extern crate lazy_static;
@@ -19,7 +20,8 @@ use std::env;
 // use std::io;
 use std::error::Error;
 use std::io::prelude::*;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
+use parking_lot::{ReentrantMutex, Mutex, RwLock};
 use std::time;
 // use std::path::Path;
 
@@ -44,6 +46,12 @@ lazy_static! {
     static ref RE_HAN_DEFAULT: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}a-zA-Z0-9+#&\._%]+)").unwrap();
 
     static ref RE_SKIP_DEFAULT: Regex = Regex::new(r"(\r\n|\s)").unwrap();
+
+    static ref RE_ENG: Regex = Regex::new(r"[a-zA-Z0-9]").unwrap();
+
+    static ref RE_USERDICT: Regex = Regex::new(r"^(.+?)( [0-9]+)?( [a-z]+)?$").unwrap();
+
+    static ref DICT_WRITING: Arc<RwLock<Map<String, ReentrantMutex<()>>>> = Arc::new(RwLock::new(Map::new()));
     
 }
 
@@ -56,7 +64,7 @@ pub fn get_abs_path(path: &str) -> String {
 }
 
 pub struct Tokenizer {
-    // dictionary:
+    lock: ReentrantMutex<()>,
     total: u32,
     initialized: bool,
     dictionary: Option<String>,
@@ -73,6 +81,7 @@ impl Tokenizer {
                 dictionary: Some(get_abs_path(dict)),
                 freq: Map::new(),
                 cache_file: None,
+                lock: ReentrantMutex::new(())
             },
             None => Tokenizer {
                 total: 0,
@@ -80,6 +89,7 @@ impl Tokenizer {
                 dictionary: None,
                 freq: Map::new(),
                 cache_file: None,
+                lock: ReentrantMutex::new(())
             },
         }
     }
@@ -128,11 +138,11 @@ impl Tokenizer {
         Ok(contents)
     }
 
-    pub fn initialize(&mut self, dictionary: Option<&str>) -> Result<(), std::io::Error> {
-        let abs_path = if let Some(dict) = dictionary {
+    pub fn initialize(&mut self, dictionary: Option<&str>) {
+        let mut abs_path = if let Some(dict) = dictionary {
             let mut _abs_path = get_abs_path(&dict);
             if self.dictionary == Some(_abs_path.clone()) && self.initialized {
-                return Ok(());
+                return;
             } else {
                 self.dictionary = Some(_abs_path.clone());
                 self.initialized = false;
@@ -157,126 +167,114 @@ impl Tokenizer {
 
 
         // with self.lock
-        if self.initialized {
-            return Ok(());
-        }
+        {
+            *self.lock.lock();
+                
+                // with DICT_WIRTING[abs_path]
+                // if let Some(lock) = DICT_WRITING.read().get(&abs_path.clone().unwrap_or("".to_string())) {
+                //     *lock.lock()
+                // }
 
-        // println!("abs_path = {:?}", &abs_path);
+            if self.initialized {
+                return;
+            }
 
-        // default_logger
-        let t1 = time::Instant::now();
-        let cache_file = if self.cache_file.is_some() {
-            self.cache_file.clone().unwrap()
-        } else if abs_path.is_none() {
-            "jiebars.cache".to_string()
-        } else {
-            // moved?
-            let _abs_path = abs_path.clone().unwrap();
-            format!("jiebars.u{:x}.cache", md5::compute(&_abs_path))
-        };
+            // println!("abs_path = {:?}", &abs_path);
 
-        let mut tmpdir = env::temp_dir();
-        tmpdir.push(&cache_file);
-        // println!("cache: {:?}", &tmpdir);
-        let mut load_from_cache_fail = true;
+            // default_logger
+            let t1 = time::Instant::now();
+            let cache_file = if self.cache_file.is_some() {
+                self.cache_file.clone().unwrap()
+            } else if abs_path.is_none() {
+                "jiebars.cache".to_string()
+            } else {
+                // moved?
+                let _abs_path = abs_path.clone().unwrap();
+                format!("jiebars.u{:x}.cache", md5::compute(&_abs_path))
+            };
 
-        // println!("is file {}", metadata(&tmpdir)?.is_file());
+            let mut tmpdir = env::temp_dir();
+            tmpdir.push(&cache_file);
+            // println!("cache: {:?}", &tmpdir);
+            let mut load_from_cache_fail = true;
 
-        if let Ok(m) = metadata(&tmpdir) {
-            if m.is_file() {
-                if abs_path.is_some() {
-                    if let Ok(abs) = metadata(&(abs_path.unwrap())) {
-                        if m.modified()? < abs.modified()? {}
+            // println!("is file {}", metadata(&tmpdir)?.is_file());
+
+            // if let Ok(m) = metadata(&tmpdir) {
+            //     if m.is_file() {
+            //         if abs_path.is_some() {
+            //             if let Ok(abs) = metadata(&abs_path.clone().unwrap()) {
+            //                 if m.modified().unwrap() < abs.modified().unwrap() {}
+            //             }
+            //         }
+
+            if (metadata(&tmpdir).is_ok() && metadata(&tmpdir).unwrap().is_file()) && (abs_path.is_none() || metadata(&abs_path.clone().unwrap()).is_ok() && metadata(&tmpdir).unwrap().modified().unwrap() > metadata(&abs_path.clone().unwrap()).unwrap().modified().unwrap()) {
+
+                    println!("cache");
+                    let cf = File::open(&tmpdir);
+
+                    match cf {
+                        Ok(mut t) => {
+                            let mut contents = String::new();
+                            t.read_to_string(&mut contents).unwrap();
+                            let (freq, total): (Map<String, u32>, u32) =
+                                serde_json::from_str(&contents).unwrap();
+                            self.freq = freq;
+                            self.total = total;
+                            load_from_cache_fail = false;
+                            println!("read from cache: {:?}", &tmpdir);
+                        }
+                        Err(e) => {
+                            load_from_cache_fail = true;
+                            println!("{}", e.to_string());
+                        }
                     }
-                }
+                
+            }
 
-                println!("cache");
-                let cf = File::open(&tmpdir);
+            // println!("bool {}", load_from_cache_fail);
+            if load_from_cache_fail {
+                
+                    
+                
 
-                match cf {
+
+                // println!("abs_path = {:?}", &abs_path);
+                let contents = self.get_dict_file().unwrap();
+                let (freq, total) = self.gen_pfdict(&contents);
+                // println!("{:?}", &freq);
+                self.freq = freq;
+                self.total = total;
+
+                let fd = File::create(&tmpdir);
+                println!("tmpdir: {:?}", &tmpdir);
+                match fd {
                     Ok(mut t) => {
-                        let mut contents = String::new();
-                        t.read_to_string(&mut contents)?;
-                        let (freq, total): (Map<String, u32>, u32) =
-                            serde_json::from_str(&contents).unwrap();
-                        self.freq = freq;
-                        self.total = total;
-                        load_from_cache_fail = false;
-                        println!("read from cache: {:?}", &tmpdir);
+                        let data = (self.freq.clone(), self.total.clone());
+                        let contents = serde_json::to_string(&data).unwrap();
+                        t.write_all(&contents.into_bytes()).unwrap();
+                        println!("dump to cache: {:?}", &tmpdir);
                     }
                     Err(e) => {
-                        load_from_cache_fail = true;
-                        println!("read from cache failed");
+                        println!("{}", e.to_string());
                     }
                 }
             }
+
+            self.initialized = true;
+            println!(
+                "Loading model cost {}.{} seconds",
+                t1.elapsed().as_secs(),
+                t1.elapsed().subsec_nanos()
+            );
         }
 
-
-
-        // if metadata(&tmpdir)?.is_file()
-        //     && (abs_path.is_none()
-        //         || metadata(&tmpdir)?.modified()? > metadata(&(abs_path.unwrap()))?.modified()?)
-        // {
-        //     println!("cache");
-        //     let mut cf = File::open(&tmpdir);
-
-        //     match cf {
-        //         Ok(mut t) => {
-        //             let mut contents = String::new();
-        //             t.read_to_string(&mut contents)?;
-        //             let (freq, total): (Map<String, u32>, u32) =
-        //                 serde_json::from_str(&contents).unwrap();
-        //             self.freq = freq;
-        //             self.total = total;
-        //             load_from_cache_fail = false;
-        //             println!("read from cache: {:?}", &tmpdir);
-        //         }
-        //         Err(e) => {
-        //             load_from_cache_fail = true;
-        //             println!("read from cache failed");
-        //         }
-        //     }
-        // }
-
-
-        // println!("bool {}", load_from_cache_fail);
-        if load_from_cache_fail {
-            // println!("abs_path = {:?}", &abs_path);
-            let contents = self.get_dict_file().unwrap();
-            let (freq, total) = self.gen_pfdict(&contents);
-            // println!("{:?}", &freq);
-            self.freq = freq;
-            self.total = total;
-
-            let fd = File::create(&tmpdir);
-            println!("tmpdir: {:?}", &tmpdir);
-            match fd {
-                Ok(mut t) => {
-                    let data = (self.freq.clone(), self.total.clone());
-                    let contents = serde_json::to_string(&data).unwrap();
-                    t.write_all(&contents.into_bytes())?;
-                    println!("dump to cache: {:?}", &tmpdir);
-                }
-                Err(e) => {
-                    println!("dump to cache failed");
-                }
-            }
-        }
-
-        self.initialized = true;
-        println!(
-            "Loading model cost {}.{} seconds",
-            t1.elapsed().as_secs(),
-            t1.elapsed().subsec_nanos()
-        );
-
-        Ok(())
+        
     }
 
     pub fn check_initialized(&mut self) {
         if !self.initialized {
-            self.initialize(None).expect("fail to initialize");
+            self.initialize(None);
         }
     }
 
@@ -439,12 +437,11 @@ impl Tokenizer {
         let mut buf = String::new();
         let n = sentence.chars().count();
         let mut segs: Vec<String> = Vec::new();
-        let re_eng = Regex::new(r"[a-zA-Z0-9]").unwrap();
 
         while x < n {
             let y = route[&x].1 + 1;
             let l_word = char_slice(sentence, x, y);
-            if re_eng.is_match(l_word) && l_word.chars().count() == 1 {
+            if RE_ENG.is_match(l_word) && l_word.chars().count() == 1 {
                 buf.push_str(l_word);
                 x = y;
             } else {
@@ -595,8 +592,7 @@ impl Tokenizer {
                 continue;
             }
 
-            let re_userdict = Regex::new(r"^(.+?)( [0-9]+)?( [a-z]+)?$").unwrap();
-            let res = re_userdict.captures(&line);
+            let res = RE_USERDICT.captures(&line);
             println!("{:?}", res);
         }
 
@@ -616,7 +612,7 @@ impl Tokenizer {
 
 
 pub fn get_freq(k: &str, d: Option<u32>) -> Option<u32> {
-    if let Some(freq) = DT.lock().unwrap().freq.get(k) {
+    if let Some(freq) = DT.lock().freq.get(k) {
         Some(*freq)
     } else {
         d
@@ -624,11 +620,11 @@ pub fn get_freq(k: &str, d: Option<u32>) -> Option<u32> {
 }
 
 pub fn cut(sentence: &str, cut_all: bool, hmm: bool) -> Vec<String> {
-    DT.lock().unwrap().cut(sentence, cut_all, hmm)
+    DT.lock().cut(sentence, cut_all, hmm)
 }
 
 pub fn cut_for_search(sentence: &str, hmm: bool) -> Vec<String> {
-    DT.lock().unwrap().cut_for_search(sentence, hmm)
+    DT.lock().cut_for_search(sentence, hmm)
 }
 
 pub fn enable_parallel(processnum: usize) {
