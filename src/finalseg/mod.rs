@@ -1,16 +1,10 @@
 extern crate regex;
 extern crate parking_lot;
 
-// #[macro_use]
-// extern crate serde_derive;
 
-// extern crate serde;
-
-
-
-pub mod prob_start;
-pub mod prob_trans;
-pub mod prob_emit;
+mod prob_start;
+mod prob_trans;
+mod prob_emit;
 
 
 use regex::Regex;
@@ -39,14 +33,10 @@ lazy_static! {
 
     static ref RE_HAN: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap();
     static ref RE_SKIP: Regex = Regex::new(r"([a-zA-Z0-9]+(?:\.\d+)?%?)").unwrap();
+
     static ref FORCE_SPLIT_WORDS: Mutex<Set<String>> = Mutex::new(Set::new());
 }
 
-// lazy_static! {
-//     static ref EMIT_P: ProbEmit = {
-
-//     }
-// }
 
 fn viterbi(
     obs: &str,

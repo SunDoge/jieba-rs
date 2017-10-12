@@ -13,6 +13,7 @@ jiebars
 - [x] cut for search
 - [x] cache
 - [x] add word
+- [ ] logger
 - [ ] lock
 - [ ] multithread
 - [ ] TF-IDF

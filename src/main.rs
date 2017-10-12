@@ -141,4 +141,41 @@ fn test() {
     println!("{}", "=".repeat(40));
     println!("3. 关键词提取");
     println!("{}", "-".repeat(40));
+    println!(" TF-IDF");
+    println!("{}", "-".repeat(40));
+    
+
+
+    println!("{}", "-".repeat(40));
+    println!(" TextRank");
+    println!("{}", "-".repeat(40));
+
+
+
+
+    println!("{}", "=".repeat(40));
+    println!("4. 词性标注");
+    println!("{}", "-".repeat(40));
+
+
+
+    println!("{}", "=".repeat(40));
+    println!("6. Tokenize: 返回词语在原文的起止位置");
+    println!("{}", "-".repeat(40));
+    println!("默认模式");
+    println!("{}", "-".repeat(40));
+
+    let result = jiebars::tokenize("永和服装饰品有限公司", jiebars::Mode::Default, true);
+    for tk in result {
+        println!("word {}\t\t start: {} \t\t end:{}", tk.0, tk.1, tk.2);
+    }
+
+    println!("{}", "-".repeat(40));
+    println!("搜索模式");
+    println!("{}", "-".repeat(40));
+    let result = jiebars::tokenize("永和服装饰品有限公司", jiebars::Mode::Search, true);
+    for tk in result {
+        println!("word {}\t\t start: {} \t\t end:{}", tk.0, tk.1, tk.2);
+    }
+    
 }

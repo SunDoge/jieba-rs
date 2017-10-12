@@ -721,20 +721,25 @@ impl Tokenizer {
             Mode::Search => {
                 for w in self.cut(sentence, false, hmm) {
                     let width = w.chars().count();
+
                     if width > 2 {
                         for i in 0..width-1 {
                             let gram2 = char_slice(&w, i, i + 2);
                             if let Some(g) = self.freq.get(gram2) {
-                                res.push((g.to_string(), start + i, start + i + 2));
+                                if *g > 0 {
+                                    res.push((gram2.to_string(), start + i, start + i + 2));
+                                }
                             }
                         }
                     }
 
                     if width > 3 {
                         for i in 0..width-2 {
-                            let gram3= char_slice(&w, i, i + 3);
+                            let gram3 = char_slice(&w, i, i + 3);
                             if let Some(g) = self.freq.get(gram3) {
-                                res.push((g.to_string(), start + i, start + i + 3));
+                                if *g > 0 {
+                                    res.push((gram3.to_string(), start + i, start + i + 3));
+                                }
                             }
                         }
                     }
@@ -785,6 +790,10 @@ pub fn cut_for_search(sentence: &str, hmm: bool) -> Vec<String> {
 
 pub fn suggest_freq(segment: &Vec<&str>, tune: bool) -> u32 {
     DT.lock().suggest_freq(segment, tune)
+}
+
+pub fn tokenize(sentence: &str, mode: Mode, hmm: bool) -> Vec<(String, usize, usize)> {
+    DT.lock().tokenize(sentence, mode, hmm)
 }
 
 pub fn enable_parallel(processnum: usize) {
