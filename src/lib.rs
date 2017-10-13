@@ -7,6 +7,9 @@ extern crate parking_lot;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+extern crate maplit;
+
 pub mod analyse;
 pub mod posseg;
 mod compact;
