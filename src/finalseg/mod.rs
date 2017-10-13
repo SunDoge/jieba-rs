@@ -147,7 +147,7 @@ pub fn cut(sentence: &str) -> Vec<String> {
                 // println!("finalseg cut {:?}", caps);
                 for word in __cut(&caps[0]) {
                     
-                    if FORCE_SPLIT_WORDS.lock().contains(&word) {
+                    if !FORCE_SPLIT_WORDS.lock().contains(&word) {
                         segs.push(word.to_string());
                     } else {
                         for c in word.chars() {

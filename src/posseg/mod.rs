@@ -7,6 +7,12 @@ mod prob_emit;
 mod char_state_tap;
 
 use regex::Regex;
+use std::collections::HashMap as Map;
+
+pub type CharStateTap = Map<char, Vec<(char, String)>>;
+pub type ProbStart = Map<(char, String), f64>;
+pub type ProbTrans = Map<(char, String), Map<(char, String), f64>>;
+pub type ProbEmit = Map<(char, String), Map<char, f64>>;
 
 lazy_static! {
     static ref RE_HAN_DETAIL: Regex = Regex::new(r"([\x{4E00}-\x{9FD5}]+)").unwrap();
