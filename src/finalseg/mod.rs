@@ -144,10 +144,17 @@ pub fn cut(sentence: &str) -> Vec<String> {
     for blk in blocks {
         match blk {
             SplitState::Captured(caps) => {
-                // println!("{:?}", caps);
+                // println!("finalseg cut {:?}", caps);
                 for word in __cut(&caps[0]) {
-                    // TODO: Force split words
-                    segs.push(word.to_string());
+                    
+                    if FORCE_SPLIT_WORDS.lock().contains(&word) {
+                        segs.push(word.to_string());
+                    } else {
+                        for c in word.chars() {
+                            segs.push(c.to_string());
+                        }
+                    }
+                    
                 }
             }
             SplitState::Unmatched(t) => {
@@ -155,7 +162,7 @@ pub fn cut(sentence: &str) -> Vec<String> {
                 for x in tmp {
                     match x {
                         SplitState::Captured(caps) => segs.push(caps[0].to_string()),
-                        SplitState::Unmatched(t) => segs.push(t.to_string()),
+                        SplitState::Unmatched(_t) => {},
                     }
                 }
             }
