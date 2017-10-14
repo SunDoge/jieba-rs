@@ -7,9 +7,6 @@ extern crate parking_lot;
 #[macro_use]
 extern crate lazy_static;
 
-#[macro_use]
-extern crate maplit;
-
 pub mod analyse;
 pub mod posseg;
 mod compact;
@@ -27,6 +24,7 @@ use std::sync::{Arc};
 use parking_lot::{ReentrantMutex, Mutex, RwLock};
 use std::time;
 use std::cmp;
+
 // use std::path::Path;
 
 // use std::path;

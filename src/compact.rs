@@ -1,6 +1,7 @@
 // extern crate regex;
 
 use regex::{CaptureMatches, Captures, Regex};
+use std::env;
 
 pub struct SplitCaptures<'r, 't> {
     finder: CaptureMatches<'r, 't>,
@@ -64,4 +65,13 @@ pub fn char_slice(sentence: &str, start: usize, end: usize) -> &str {
     &sentence[sentence.char_indices().nth(start).unwrap().0..
                   sentence.char_indices().nth(end - 1).unwrap().0 +
                       sentence.char_indices().nth(end - 1).unwrap().1.len_utf8()]
+}
+
+pub fn get_module_res(res: &Vec<&str>) -> String {
+    let mut cwd = env::current_dir().unwrap();
+    cwd.push("src");
+    for path in res {
+        cwd.push(path);
+    }
+    cwd.to_str().unwrap().to_string()
 }

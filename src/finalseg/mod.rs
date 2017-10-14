@@ -1,17 +1,21 @@
-extern crate regex;
 extern crate parking_lot;
+extern crate regex;
+extern crate serde_pickle;
 
 
-mod prob_start;
-mod prob_trans;
-mod prob_emit;
+// mod prob_start;
+// mod prob_trans;
+// mod prob_emit;
 
 
 use regex::Regex;
 use std::collections::HashMap as Map;
 use std::collections::HashSet as Set;
 use parking_lot::Mutex;
-use super::compact::{char_slice, SplitCaptures, SplitState};
+use super::compact::{char_slice, SplitCaptures, SplitState, get_module_res};
+// use super::get_abs_path;
+use std::fs::File;
+use std::io::prelude::*;
 
 
 pub type ProbEmit = Map<char, Map<char, f64>>;
@@ -19,6 +23,9 @@ pub type ProbStart = Map<char, f64>;
 pub type ProbTrans = Map<char, Map<char, f64>>;
 
 const MIN_FLOAT: f64 = -3.14e100;
+const PROB_START_P: &'static str = "prob_start.p";
+const PROB_TRANS_P: &'static str = "prob_trans.p";
+const PROB_EMIT_P: &'static str = "prob_emit.p";
 
 lazy_static! {
     static ref PREV_STATUS: Map<char, &'static str> = {
@@ -35,8 +42,21 @@ lazy_static! {
     static ref RE_SKIP: Regex = Regex::new(r"([a-zA-Z0-9]+(?:\.\d+)?%?)").unwrap();
 
     static ref FORCE_SPLIT_WORDS: Mutex<Set<String>> = Mutex::new(Set::new());
+
+    static ref START_P: ProbStart = serde_pickle::from_reader(load_model(PROB_START_P)).unwrap();
+    static ref TRANS_P: ProbTrans = serde_pickle::from_reader(load_model(PROB_TRANS_P)).unwrap();
+    static ref EMIT_P: ProbEmit = serde_pickle::from_reader(load_model(PROB_EMIT_P)).unwrap();
 }
 
+
+
+fn load_model(filename: &str) -> File {
+    let mut contents = String::new();
+    let res = get_module_res(&vec!["finalseg", filename]);
+    // println!("{}", &res);
+    let f = File::open(&res).expect("file not found");
+    f
+}
 
 fn viterbi(
     obs: &str,
@@ -105,9 +125,12 @@ fn __cut(sentence: &str) -> Vec<String> {
     let (_prob, pos_list) = viterbi(
         sentence,
         "BMES",
-        &*prob_start::P,
-        &*prob_trans::P,
-        &*prob_emit::P,
+        // &*prob_start::P,
+        // &*prob_trans::P,
+        // &*prob_emit::P,
+        &*START_P,
+        &*TRANS_P,
+        &*EMIT_P
     );
 
     // println!("{}-{:?}", prob, pos_list);
@@ -146,7 +169,6 @@ pub fn cut(sentence: &str) -> Vec<String> {
             SplitState::Captured(caps) => {
                 // println!("finalseg cut {:?}", caps);
                 for word in __cut(&caps[0]) {
-                    
                     if !FORCE_SPLIT_WORDS.lock().contains(&word) {
                         segs.push(word.to_string());
                     } else {
@@ -154,7 +176,6 @@ pub fn cut(sentence: &str) -> Vec<String> {
                             segs.push(c.to_string());
                         }
                     }
-                    
                 }
             }
             SplitState::Unmatched(t) => {
@@ -162,7 +183,7 @@ pub fn cut(sentence: &str) -> Vec<String> {
                 for x in tmp {
                     match x {
                         SplitState::Captured(caps) => segs.push(caps[0].to_string()),
-                        SplitState::Unmatched(_t) => {},
+                        SplitState::Unmatched(_t) => {}
                     }
                 }
             }
