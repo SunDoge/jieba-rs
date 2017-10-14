@@ -40,9 +40,13 @@ lazy_static! {
 }
 
 fn load_model(filename: &str) -> File {
-    let mut contents = String::new();
     let res = get_module_res(&vec!["posseg", filename]);
     // println!("{}", &res);
     let f = File::open(&res).expect("file not found");
     f
+}
+
+struct Pair {
+    word: String,
+    flag: char,
 }
