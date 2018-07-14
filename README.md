@@ -1,4 +1,6 @@
 # jieba-rs
+
+[![Build Status](https://travis-ci.org/SunDoge/jieba-rs.svg?branch=dev)](https://travis-ci.org/SunDoge/jieba-rs)
 ======
 
 “结巴”中文分词Rust版。
