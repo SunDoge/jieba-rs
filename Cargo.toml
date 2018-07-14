@@ -1,0 +1,6 @@
+[package]
+name = "jieba"
+version = "0.2.0"
+authors = ["SunDoge <384813529@qq.com>"]
+
+[dependencies]
